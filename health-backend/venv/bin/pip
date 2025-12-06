@@ -1,4 +1,4 @@
-#!/home/kollins/projects/mobileapp/smart-assistant-doctor-recommender/healthbackend/venv/bin/python3
+#!/home/kollins/projects/smart-assistant-doctor-recommender/health-backend/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -9,7 +9,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV /home/kollins/projects/mobileapp/smart-assistant-doctor-recommender/healthbackend/venv
+setenv VIRTUAL_ENV /home/kollins/projects/smart-assistant-doctor-recommender/health-backend/venv
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"
