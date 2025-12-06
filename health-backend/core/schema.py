@@ -4,20 +4,24 @@ from graphene_django import DjangoObjectType
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 from graphql_jwt.shortcuts import get_token
+
 from datetime import timedelta
 from django.contrib.auth import authenticate
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import uuid
 
-from .models import User, Patient, Doctor, Appointment, Specialty
+from .models import (
+    User, Patient, Doctor, Appointment, Specialty,
+    PatientDoctorBookmark, Notification
+)
 
 
 # ==================== TYPES ====================
 class PatientType(DjangoObjectType):
     email = graphene.String()
     phone_number = graphene.String()
-    profile_picture_url = graphene.String()  # NEW
+    profile_picture_url = graphene.String()
 
     class Meta:
         model = Patient
@@ -34,6 +38,7 @@ class PatientType(DjangoObjectType):
         if self.profile_picture:
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
+
 
 class UserType(DjangoObjectType):
     patient = graphene.Field(PatientType)
@@ -74,6 +79,14 @@ class NotificationType(graphene.ObjectType):
     description = graphene.String(required=True)
     createdAt = graphene.DateTime(required=True)
     isRead = graphene.Boolean(required=True)
+
+
+# ==================== BOOKMARKED DOCTOR TYPE ====================
+class BookmarkedDoctorType(DoctorType):
+    """Same as DoctorType but used for bookmarked list (optional – you can reuse DoctorType)"""
+    class Meta:
+        model = Doctor
+        fields = "__all__"
 
 
 # ==================== INPUTS ====================
@@ -174,7 +187,7 @@ class CreatePatientProfile(graphene.Mutation):
     def mutate(root, info, input):
         user = info.context.user
         if hasattr(user, "patient"):
-            return CreatePatientProfile(patient=None, success=False, error="Profile already exists")
+            return CreatePatientProfile(success=False, error="Profile already exists")
 
         patient = Patient.objects.create(
             user=user,
@@ -184,7 +197,7 @@ class CreatePatientProfile(graphene.Mutation):
             date_of_birth=input.get("date_of_birth"),
             gender=input.gender.upper(),
         )
-        return CreatePatientProfile(patient=patient, success=True, error=None)
+        return CreatePatientProfile(patient=patient, success=True)
 
 
 class EditProfile(graphene.Mutation):
@@ -200,26 +213,23 @@ class EditProfile(graphene.Mutation):
     @login_required
     def mutate(root, info, input):
         user = info.context.user
-
         try:
             patient = user.patient
         except AttributeError:
             return EditProfile(success=False, error="Patient profile does not exist")
 
-        # Update User fields
+        # Update User
         if input.email is not None:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return EditProfile(success=False, error="Email already in use")
             user.email = input.email.lower()
-
         if input.phone_number is not None:
             if User.objects.exclude(pk=user.pk).filter(phone_number=input.phone_number).exists():
                 return EditProfile(success=False, error="Phone number already in use")
             user.phone_number = input.phone_number
-
         user.save()
 
-        # Update Patient fields
+        # Update Patient
         if input.first_name is not None:
             patient.first_name = input.first_name
         if input.last_name is not None:
@@ -230,10 +240,9 @@ class EditProfile(graphene.Mutation):
             patient.date_of_birth = input.date_of_birth
         if input.gender is not None:
             patient.gender = input.gender.upper()
-
         patient.save()
 
-        return EditProfile(patient=patient, user=user, success=True, error=None)
+        return EditProfile(patient=patient, user=user, success=True)
 
 
 class BookAppointment(graphene.Mutation):
@@ -260,6 +269,7 @@ class BookAppointment(graphene.Mutation):
             rastuc_id=str(uuid.uuid4())
         )
 
+        # Send real-time notification
         async_to_sync(get_channel_layer().group_send)(
             f"notifications_{patient.id}",
             {
@@ -276,6 +286,47 @@ class BookAppointment(graphene.Mutation):
         return BookAppointment(appointment=appt)
 
 
+# ==================== BOOKMARK MUTATIONS ====================
+class BookmarkDoctor(graphene.Mutation):
+    class Arguments:
+        doctor_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    doctor = graphene.Field(DoctorType)
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, doctor_id):
+        user = info.context.user
+        if not hasattr(user, "patient"):
+            raise Exception("Patient profile required")
+
+        doctor = Doctor.objects.get(pk=doctor_id)
+        PatientDoctorBookmark.objects.get_or_create(patient=user.patient, doctor=doctor)
+        return BookmarkDoctor(success=True, doctor=doctor)
+
+
+class UnbookmarkDoctor(graphene.Mutation):
+    class Arguments:
+        doctor_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, doctor_id):
+        user = info.context.user
+        if not hasattr(user, "patient"):
+            raise Exception("Patient profile required")
+
+        try:
+            bookmark = PatientDoctorBookmark.objects.get(patient=user.patient, doctor_id=doctor_id)
+            bookmark.delete()
+            return UnbookmarkDoctor(success=True)
+        except PatientDoctorBookmark.DoesNotExist:
+            return UnbookmarkDoctor(success=False)
+
+
 # ==================== QUERY ====================
 class Query(graphene.ObjectType):
     hello = graphene.String(default_value="Health Backend API is LIVE!")
@@ -285,22 +336,37 @@ class Query(graphene.ObjectType):
     patients = graphene.List(PatientType)
     appointments = graphene.List(AppointmentType)
 
-    def resolve_me(root, info):
+    # NEW: Bookmarked Doctors
+    bookmarked_doctors = graphene.List(BookmarkedDoctorType)
+
+    def resolve_me(self, info):
         return info.context.user if info.context.user.is_authenticated else None
 
-    def resolve_doctors(root, info): return Doctor.objects.all()
-    def resolve_specialties(root, info): return Specialty.objects.all()
+    def resolve_doctors(self, info):
+        return Doctor.objects.all()
 
-    def resolve_patients(root, info):
+    def resolve_specialties(self, info):
+        return Specialty.objects.all()
+
+    def resolve_patients(self, info):
         if info.context.user.is_staff:
             return Patient.objects.all()
         return Patient.objects.none()
 
-    def resolve_appointments(root, info):
+    def resolve_appointments(self, info):
         user = info.context.user
         if not user.is_authenticated or not hasattr(user, "patient"):
             return Appointment.objects.none()
         return Appointment.objects.filter(patient=user.patient).order_by('-start_time')
+
+    @login_required
+    def resolve_bookmarked_doctors(self, info):
+        user = info.context.user
+        if not hasattr(user, "patient"):
+            return Doctor.objects.none()
+        patient = user.patient
+        bookmarks = PatientDoctorBookmark.objects.filter(patient=patient).values_list("doctor_id", flat=True)
+        return Doctor.objects.filter(id__in=bookmarks).order_by('-patientdoctorbookmark__created_at')
 
 
 # ==================== MUTATION ROOT ====================
@@ -312,13 +378,17 @@ class Mutation(graphene.ObjectType):
     sign_in = SignIn.Field()
     sign_up = SignUp.Field()
     create_patient_profile = CreatePatientProfile.Field()
-    edit_profile = EditProfile.Field()           # THE ONE YOU WANT
+    edit_profile = EditProfile.Field()
     book_appointment = BookAppointment.Field()
+
+    # Bookmark mutations
+    bookmark_doctor = BookmarkDoctor.Field()
+    unbookmark_doctor = UnbookmarkDoctor.Field()
 
 
 # ==================== SUBSCRIPTION ====================
 class Subscription(graphene.ObjectType):
-    retrieveNewNotifications = graphene.Field(
+    retrieve_new_notifications = graphene.Field(
         NotificationType,
         patient_id=graphene.Int(required=True)
     )
