@@ -1,11 +1,15 @@
+# core/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.files.storage import default_storage
+
 
 class User(AbstractUser):
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     phone_number_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
+
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient')
@@ -15,8 +19,31 @@ class Patient(models.Model):
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=[('M','Male'),('F','Female'),('O','Other')], blank=True)
 
+    # PROFILE PICTURE FIELD
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/',
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        # Delete old photo when updating
+        try:
+            old = Patient.objects.get(pk=self.pk)
+            if old.profile_picture and old.profile_picture != self.profile_picture:
+                if default_storage.exists(old.profile_picture.path):
+                    default_storage.delete(old.profile_picture.path)
+        except Patient.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)
+
+
 class Specialty(models.Model):
     name = models.CharField(max_length=100, unique=True)
+
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor')
@@ -24,8 +51,6 @@ class Doctor(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     full_name = models.CharField(max_length=200, blank=True)
-    
-    # THIS IS THE FIX
     primary_specialty = models.ForeignKey(
         Specialty,
         on_delete=models.SET_NULL,
@@ -37,7 +62,6 @@ class Doctor(models.Model):
         blank=True,
         related_name='subspecialty_doctors'
     )
-
     takes_postpaid_payment = models.BooleanField(default=True)
     takes_prepaid_payment = models.BooleanField(default=True)
     teleconsult_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -49,13 +73,16 @@ class Doctor(models.Model):
             self.full_name = f"{self.title} {self.first_name} {self.last_name}".strip()
         super().save(*args, **kwargs)
 
+
 class Organization(models.Model):
     name = models.CharField(max_length=200)
     type = models.CharField(max_length=100, blank=True)
 
+
 class OrganizationClinic(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
+
 
 class Appointment(models.Model):
     MODE_CHOICES = [('TELE','Teleconsult'), ('CLINIC','Clinic Visit'), ('HOME','Homecare')]
@@ -70,12 +97,15 @@ class Appointment(models.Model):
     payment_completed = models.BooleanField(default=False)
     rastuc_id = models.CharField(max_length=100, blank=True, unique=True)
 
+
 class PatientDoctorBookmark(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         unique_together = ('patient', 'doctor')
+
 
 class Notification(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)

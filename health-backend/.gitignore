@@ -1,30 +1,29 @@
+# Database
+db.sqlite3
+*.sqlite3
 
-# Local Django settings overrides
-healthbackend/settings.py
-healthbackend/urls.py
-core/models.py
-*.pyc
+# Python
 __pycache__/
-
-# Local Django settings overrides
-healthbackend/settings.py
-healthbackend/urls.py
-core/models.py
-*.pyc
-__pycache__/
-
-# Python cache
-__pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.pyc
+
+# Virtual env
 venv/
-.venv/
-env/ 
+.env
+.env.local
+.env.*.local
+
+# Media
+media/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+venv/
 
 # Migration cache (harmless but ugly in Git)
 */migrations/__pycache__/
 __pycache__/
-venv/
-.venv/
-env/ 
