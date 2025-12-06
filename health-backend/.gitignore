@@ -1,39 +1,24 @@
-# Django
-*.sqlite3
+# Database
 db.sqlite3
+*.sqlite3
+
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+*.pyo
+*.pyd
+*.pyc
 
-# Virtual environment
+# Virtual env
 venv/
-env/
-.venv/
-ENV/
-
-# Environment variables
 .env
 .env.local
+.env.*.local
 
-# Media & static (you don't commit uploaded files during dev)
+# Media
 media/
-staticfiles/
 
-# VS Code
+# IDE
 .vscode/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# PyCharm/IDE
 .idea/
 *.iml
-*.iws
-
-# Mac
-.DS_Store
-
-# Logs
-*.log
