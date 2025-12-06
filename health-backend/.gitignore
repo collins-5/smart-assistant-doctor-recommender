@@ -21,3 +21,7 @@ __pycache__/
 venv/
 .venv/
 env/ 
+
+# Migration cache (harmless but ugly in Git)
+*/migrations/__pycache__/
+__pycache__/
