@@ -17,11 +17,12 @@ from .models import User, Patient, Doctor, Appointment, Specialty
 class PatientType(DjangoObjectType):
     email = graphene.String()
     phone_number = graphene.String()
+    profile_picture_url = graphene.String()  # NEW
 
     class Meta:
         model = Patient
         fields = "__all__"
-        convert_choices_to_enum = False  # Prevents gender enum errors
+        convert_choices_to_enum = False
 
     def resolve_email(self, info):
         return self.user.email if self.user else None
@@ -29,6 +30,10 @@ class PatientType(DjangoObjectType):
     def resolve_phone_number(self, info):
         return self.user.phone_number if self.user else None
 
+    def resolve_profile_picture_url(self, info):
+        if self.profile_picture:
+            return info.context.build_absolute_uri(self.profile_picture.url)
+        return None
 
 class UserType(DjangoObjectType):
     patient = graphene.Field(PatientType)
