@@ -1,0 +1,103 @@
+# core/admin.py
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
+from .models import (
+    User, Patient, Doctor, Specialty, Appointment,
+    Organization, OrganizationClinic, PatientDoctorBookmark, Notification
+)
+
+# Optional: cleaner admin sidebar
+admin.site.unregister(Group)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    list_display = ('email', 'phone_number', 'first_name', 'last_name', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'is_superuser')
+    search_fields = ('email', 'phone_number', 'first_name', 'last_name')
+    ordering = ('email',)
+
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Personal Info', {'fields': ('first_name', 'last_name', 'email', 'phone_number')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+    add_fieldsets = (
+        (None, {
+            'fields': ('email', 'phone_number', 'password1', 'password2', 'is_staff', 'is_active'),
+        }),
+    )
+
+
+@admin.register(Patient)
+class PatientAdmin(admin.ModelAdmin):
+    list_display = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender')
+    search_fields = ('user__email', 'user__phone_number', 'first_name', 'last_name')
+    list_filter = ('gender', 'date_of_birth')
+    raw_id_fields = ('user',)
+
+
+@admin.register(Doctor)
+class DoctorAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'get_email', 'primary_specialty', 'takes_prepaid_payment', 'teleconsult_price')
+    list_filter = ('primary_specialty', 'takes_prepaid_payment', 'takes_postpaid_payment')
+    search_fields = ('user__email', 'first_name', 'last_name', 'full_name')
+    raw_id_fields = ('user', 'primary_specialty')
+    readonly_fields = ('full_name',)
+
+    def get_email(self, obj):
+        return obj.user.email if obj.user else '-'
+    get_email.short_description = 'Email'
+
+
+@admin.register(Specialty)
+class SpecialtyAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+
+@admin.register(Appointment)
+class AppointmentAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'doctor', 'start_time', 'encounter_mode', 'cost', 'payment_completed')
+    list_filter = ('encounter_mode', 'payment_completed', 'start_time')
+    search_fields = (
+        'patient__user__email',
+        'patient__first_name',
+        'doctor__user__email',
+        'doctor__first_name',
+        'rastuc_id'
+    )
+    raw_id_fields = ('patient', 'doctor', 'organization', 'organization_clinic')
+    date_hierarchy = 'start_time'
+    ordering = ('-start_time',)
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'type')
+    search_fields = ('name', 'type')
+
+
+@admin.register(OrganizationClinic)
+class OrganizationClinicAdmin(admin.ModelAdmin):
+    list_display = ('name', 'organization')
+    search_fields = ('name', 'organization__name')
+    raw_id_fields = ('organization',)
+
+
+@admin.register(PatientDoctorBookmark)
+class PatientDoctorBookmarkAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'doctor', 'created_at')
+    list_filter = ('created_at',)
+    raw_id_fields = ('patient', 'doctor')
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'title', 'is_read', 'created_at')
+    list_filter = ('is_read', 'created_at')
+    search_fields = ('patient__user__email', 'title', 'description')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('patient',)
