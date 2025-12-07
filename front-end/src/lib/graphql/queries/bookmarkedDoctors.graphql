@@ -1,0 +1,16 @@
+query GetBookmarkedDoctors {
+  bookmarkedDoctors {
+    id
+    title
+    firstName
+    lastName
+    fullName
+    primarySpecialty {
+      id
+      name
+    }
+    teleconsultPrice
+    clinicVisitPrice
+    homecarePrice
+  }
+}

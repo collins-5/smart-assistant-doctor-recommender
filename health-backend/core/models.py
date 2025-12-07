@@ -10,16 +10,53 @@ class User(AbstractUser):
     phone_number_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
 
+    def __str__(self):
+        return self.email or self.phone_number or str(self.id)
+
+
+class Country(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=10, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Countries"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class County(models.Model):
+    name = models.CharField(max_length=100)
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='counties')
+
+    class Meta:
+        unique_together = ('name', 'country')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name}, {self.country.name}"
+
 
 class Patient(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient')
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=10, choices=[('M','Male'),('F','Female'),('O','Other')], blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
 
-    # PROFILE PICTURE FIELD
+    # LOCATION
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True)
+    county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # PROFILE PICTURE
     profile_picture = models.ImageField(
         upload_to='profile_pictures/',
         null=True,
@@ -43,6 +80,9 @@ class Patient(models.Model):
 
 class Specialty(models.Model):
     name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Doctor(models.Model):
@@ -72,6 +112,9 @@ class Doctor(models.Model):
         if not self.full_name:
             self.full_name = f"{self.title} {self.first_name} {self.last_name}".strip()
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.full_name
 
 
 class Organization(models.Model):

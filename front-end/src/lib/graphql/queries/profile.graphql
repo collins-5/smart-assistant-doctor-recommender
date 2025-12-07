@@ -1,0 +1,19 @@
+query Profile {
+  me {
+    id
+    email
+    phoneNumber
+    firstName
+    lastName
+    patient {
+      id
+      firstName
+      lastName
+      middleName
+      dateOfBirth
+      gender
+      email
+      phoneNumber
+    }
+  }
+}

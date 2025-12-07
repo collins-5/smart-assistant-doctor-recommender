@@ -13,11 +13,23 @@ import uuid
 
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
-    PatientDoctorBookmark, Notification
+    PatientDoctorBookmark, Notification, Country, County
 )
 
 
 # ==================== TYPES ====================
+class CountryType(DjangoObjectType):
+    class Meta:
+        model = Country
+        fields = ("id", "name", "code")
+
+
+class CountyType(DjangoObjectType):
+    class Meta:
+        model = County
+        fields = ("id", "name", "country")
+
+
 class PatientType(DjangoObjectType):
     email = graphene.String()
     phone_number = graphene.String()
@@ -46,7 +58,6 @@ class UserType(DjangoObjectType):
     class Meta:
         model = User
         fields = ("id", "email", "phone_number", "first_name", "last_name", "is_active")
-        convert_choices_to_enum = False
 
     def resolve_patient(self, info):
         try:
@@ -81,9 +92,7 @@ class NotificationType(graphene.ObjectType):
     isRead = graphene.Boolean(required=True)
 
 
-# ==================== BOOKMARKED DOCTOR TYPE ====================
 class BookmarkedDoctorType(DoctorType):
-    """Same as DoctorType but used for bookmarked list (optional – you can reuse DoctorType)"""
     class Meta:
         model = Doctor
         fields = "__all__"
@@ -112,6 +121,8 @@ class EditProfileInput(graphene.InputObjectType):
     gender = graphene.String()
     email = graphene.String()
     phone_number = graphene.String()
+    country_id = graphene.Int()
+    county_id = graphene.Int()
 
 
 # ==================== MUTATIONS ====================
@@ -218,7 +229,7 @@ class EditProfile(graphene.Mutation):
         except AttributeError:
             return EditProfile(success=False, error="Patient profile does not exist")
 
-        # Update User
+        # Update User fields
         if input.email is not None:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return EditProfile(success=False, error="Email already in use")
@@ -229,7 +240,7 @@ class EditProfile(graphene.Mutation):
             user.phone_number = input.phone_number
         user.save()
 
-        # Update Patient
+        # Update Patient fields
         if input.first_name is not None:
             patient.first_name = input.first_name
         if input.last_name is not None:
@@ -240,6 +251,19 @@ class EditProfile(graphene.Mutation):
             patient.date_of_birth = input.date_of_birth
         if input.gender is not None:
             patient.gender = input.gender.upper()
+
+        # Country & County
+        if input.country_id is not None:
+            try:
+                patient.country = Country.objects.get(id=input.country_id)
+            except Country.DoesNotExist:
+                return EditProfile(success=False, error="Invalid country")
+        if input.county_id is not None:
+            try:
+                patient.county = County.objects.get(id=input.county_id)
+            except County.DoesNotExist:
+                return EditProfile(success=False, error="Invalid county")
+
         patient.save()
 
         return EditProfile(patient=patient, user=user, success=True)
@@ -269,7 +293,6 @@ class BookAppointment(graphene.Mutation):
             rastuc_id=str(uuid.uuid4())
         )
 
-        # Send real-time notification
         async_to_sync(get_channel_layer().group_send)(
             f"notifications_{patient.id}",
             {
@@ -286,7 +309,6 @@ class BookAppointment(graphene.Mutation):
         return BookAppointment(appointment=appt)
 
 
-# ==================== BOOKMARK MUTATIONS ====================
 class BookmarkDoctor(graphene.Mutation):
     class Arguments:
         doctor_id = graphene.Int(required=True)
@@ -335,9 +357,11 @@ class Query(graphene.ObjectType):
     specialties = graphene.List(SpecialtyType)
     patients = graphene.List(PatientType)
     appointments = graphene.List(AppointmentType)
-
-    # NEW: Bookmarked Doctors
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
+
+    # NEW: Countries & Counties
+    countries = graphene.List(CountryType)
+    counties = graphene.List(CountyType, country_id=graphene.Int())
 
     def resolve_me(self, info):
         return info.context.user if info.context.user.is_authenticated else None
@@ -368,6 +392,14 @@ class Query(graphene.ObjectType):
         bookmarks = PatientDoctorBookmark.objects.filter(patient=patient).values_list("doctor_id", flat=True)
         return Doctor.objects.filter(id__in=bookmarks).order_by('-patientdoctorbookmark__created_at')
 
+    def resolve_countries(root, info):
+        return Country.objects.all()
+
+    def resolve_counties(root, info, country_id=None):
+        if country_id:
+            return County.objects.filter(country_id=country_id)
+        return County.objects.all()
+
 
 # ==================== MUTATION ROOT ====================
 class Mutation(graphene.ObjectType):
@@ -380,8 +412,6 @@ class Mutation(graphene.ObjectType):
     create_patient_profile = CreatePatientProfile.Field()
     edit_profile = EditProfile.Field()
     book_appointment = BookAppointment.Field()
-
-    # Bookmark mutations
     bookmark_doctor = BookmarkDoctor.Field()
     unbookmark_doctor = UnbookmarkDoctor.Field()
 

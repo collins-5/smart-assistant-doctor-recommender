@@ -1,0 +1,19 @@
+query GetMyAppointments {
+  appointments {
+    id
+    startTime
+    endTime
+    encounterMode
+    cost
+    paymentCompleted
+    rastucId
+    doctor {
+      id
+      fullName
+      title
+      primarySpecialty {
+        name
+      }
+    }
+  }
+}
