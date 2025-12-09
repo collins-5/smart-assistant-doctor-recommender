@@ -3,13 +3,11 @@ from graphene_django import DjangoObjectType
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 from graphql_jwt.shortcuts import get_token
-
 from datetime import timedelta
 from django.contrib.auth import authenticate
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import uuid
-
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
     PatientDoctorBookmark, Notification, Country, County
@@ -111,12 +109,18 @@ class AppointmentInput(graphene.InputObjectType):
     encounter_mode = graphene.String(required=True)
 
 
+# Updated: Now supports all fields (same as edit)
 class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     middle_name = graphene.String()
     date_of_birth = graphene.Date(required=True)
     gender = graphene.String(required=True)
+
+    email = graphene.String()
+    phone_number = graphene.String()
+    country_id = graphene.Int()
+    county_id = graphene.Int()
 
 
 class EditProfileInput(graphene.InputObjectType):
@@ -132,7 +136,6 @@ class EditProfileInput(graphene.InputObjectType):
 
 
 # ==================== MUTATIONS ====================
-
 class SignIn(graphene.Mutation):
     class Arguments:
         email_or_phone_number = graphene.String(required=True)
@@ -150,16 +153,14 @@ class SignIn(graphene.Mutation):
                 user = authenticate(username=user_by_email.username, password=password)
             except User.DoesNotExist:
                 pass
-            if not user:
-                try:
-                    user_by_phone = User.objects.get(phone_number=email_or_phone_number)
-                    user = authenticate(username=user_by_phone.username, password=password)
-                except User.DoesNotExist:
-                    pass
-
+        if not user:
+            try:
+                user_by_phone = User.objects.get(phone_number=email_or_phone_number)
+                user = authenticate(username=user_by_phone.username, password=password)
+            except User.DoesNotExist:
+                pass
         if not user:
             raise Exception("Invalid credentials")
-
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
 
@@ -187,7 +188,6 @@ class SignUp(graphene.Mutation):
 
         username = username.lower().strip()
         email = email.lower().strip()
-
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -195,22 +195,17 @@ class SignUp(graphene.Mutation):
         )
         user.set_password(password)
         user.save()
-
         token = get_token(user)
-
-        return SignUp(
-            success=True,
-            error=None,
-            jwt_token=token,
-            user=user
-        )
+        return SignUp(success=True, error=None, jwt_token=token, user=user)
 
 
+# Updated CreatePatientProfile — now accepts ALL fields in one go
 class CreatePatientProfile(graphene.Mutation):
     class Arguments:
         input = CreatePatientProfileInput(required=True)
 
     patient = graphene.Field(PatientType)
+    user = graphene.Field(UserType)
     success = graphene.Boolean()
     error = graphene.String()
 
@@ -220,18 +215,53 @@ class CreatePatientProfile(graphene.Mutation):
         user = info.context.user
 
         if hasattr(user, "patient"):
-            return CreatePatientProfile(success=False, error="Profile already exists")
+            return CreatePatientProfile(success=False, error="Patient profile already exists")
 
+        # Update User email/phone if provided
+        if input.email:
+            if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
+                return CreatePatientProfile(success=False, error="Email already in use")
+            user.email = input.email.lower().strip()
+
+        if input.phone_number:
+            if User.objects.exclude(pk=user.pk).filter(phone_number=input.phone_number).exists():
+                return CreatePatientProfile(success=False, error="Phone number already in use")
+            user.phone_number = input.phone_number
+
+        user.first_name = input.first_name.strip()
+        user.last_name = input.last_name.strip()
+        user.save()
+
+        # Handle Country & County
+        country = None
+        county = None
+        if input.country_id:
+            try:
+                country = Country.objects.get(id=input.country_id)
+            except Country.DoesNotExist:
+                return CreatePatientProfile(success=False, error="Invalid country")
+
+        if input.county_id:
+            if not country:
+                return CreatePatientProfile(success=False, error="Country is required when county is provided")
+            try:
+                county = County.objects.get(id=input.county_id, country=country)
+            except County.DoesNotExist:
+                return CreatePatientProfile(success=False, error="Invalid county")
+
+        # Create Patient
         patient = Patient.objects.create(
             user=user,
-            first_name=input.first_name,
-            last_name=input.last_name,
-            middle_name=input.get("middle_name") or "",
+            first_name=input.first_name.strip(),
+            last_name=input.last_name.strip(),
+            middle_name=(input.middle_name or "").strip(),
             date_of_birth=input.date_of_birth,
             gender=input.gender.upper(),
+            country=country,
+            county=county,
         )
 
-        return CreatePatientProfile(patient=patient, success=True)
+        return CreatePatientProfile(success=True, error=None, patient=patient, user=user)
 
 
 class EditProfile(graphene.Mutation):
@@ -256,6 +286,7 @@ class EditProfile(graphene.Mutation):
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return EditProfile(success=False, error="Email already in use")
             user.email = input.email.lower()
+
         if input.phone_number is not None:
             if User.objects.exclude(pk=user.pk).filter(phone_number=input.phone_number).exists():
                 return EditProfile(success=False, error="Phone number already in use")
@@ -264,8 +295,10 @@ class EditProfile(graphene.Mutation):
 
         if input.first_name is not None:
             patient.first_name = input.first_name
+            user.first_name = input.first_name
         if input.last_name is not None:
             patient.last_name = input.last_name
+            user.last_name = input.last_name
         if input.middle_name is not None:
             patient.middle_name = input.middle_name
         if input.date_of_birth is not None:
@@ -278,6 +311,7 @@ class EditProfile(graphene.Mutation):
                 patient.country = Country.objects.get(id=input.country_id)
             except Country.DoesNotExist:
                 return EditProfile(success=False, error="Invalid country")
+
         if input.county_id is not None:
             try:
                 patient.county = County.objects.get(id=input.county_id)
@@ -285,6 +319,8 @@ class EditProfile(graphene.Mutation):
                 return EditProfile(success=False, error="Invalid county")
 
         patient.save()
+        user.save()
+
         return EditProfile(patient=patient, user=user, success=True)
 
 
@@ -300,7 +336,6 @@ class BookAppointment(graphene.Mutation):
         user = info.context.user
         if not hasattr(user, "patient"):
             raise Exception("Patient profile required")
-
         patient = user.patient
         appt = Appointment.objects.create(
             patient=patient,
@@ -311,7 +346,6 @@ class BookAppointment(graphene.Mutation):
             cost=2500,
             rastuc_id=str(uuid.uuid4())
         )
-
         async_to_sync(get_channel_layer().group_send)(
             f"notifications_{patient.id}",
             {
@@ -341,7 +375,6 @@ class BookmarkDoctor(graphene.Mutation):
         user = info.context.user
         if not hasattr(user, "patient"):
             raise Exception("Patient profile required")
-
         doctor = Doctor.objects.get(pk=doctor_id)
         PatientDoctorBookmark.objects.get_or_create(patient=user.patient, doctor=doctor)
         return BookmarkDoctor(success=True, doctor=doctor)
@@ -359,7 +392,6 @@ class UnbookmarkDoctor(graphene.Mutation):
         user = info.context.user
         if not hasattr(user, "patient"):
             raise Exception("Patient profile required")
-
         try:
             bookmark = PatientDoctorBookmark.objects.get(patient=user.patient, doctor_id=doctor_id)
             bookmark.delete()

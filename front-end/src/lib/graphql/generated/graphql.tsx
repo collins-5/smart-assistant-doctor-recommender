@@ -100,14 +100,19 @@ export type CreatePatientProfile = {
   error?: Maybe<Scalars['String']['output']>;
   patient?: Maybe<PatientType>;
   success?: Maybe<Scalars['Boolean']['output']>;
+  user?: Maybe<UserType>;
 };
 
 export type CreatePatientProfileInput = {
+  countryId?: InputMaybe<Scalars['Int']['input']>;
+  countyId?: InputMaybe<Scalars['Int']['input']>;
   dateOfBirth: Scalars['Date']['input'];
+  email?: InputMaybe<Scalars['String']['input']>;
   firstName: Scalars['String']['input'];
   gender: Scalars['String']['input'];
   lastName: Scalars['String']['input'];
   middleName?: InputMaybe<Scalars['String']['input']>;
+  phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type DoctorType = {
@@ -336,6 +341,13 @@ export type Verify = {
   payload: Scalars['GenericScalar']['output'];
 };
 
+export type CreatePatientProfileMutationVariables = Exact<{
+  input: CreatePatientProfileInput;
+}>;
+
+
+export type CreatePatientProfileMutation = { __typename?: 'Mutation', createPatientProfile?: { __typename?: 'CreatePatientProfile', success?: boolean | null, error?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string } | null, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, profilePictureUrl?: string | null, country?: { __typename?: 'CountryType', id: string, name: string } | null, county?: { __typename?: 'CountyType', id: string, name: string } | null } | null } | null };
+
 export type EditProfileMutationVariables = Exact<{
   input: EditProfileInput;
 }>;
@@ -401,6 +413,64 @@ export type OnNewNotificationSubscriptionVariables = Exact<{
 export type OnNewNotificationSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
 
 
+export const CreatePatientProfileDocument = gql`
+    mutation CreatePatientProfile($input: CreatePatientProfileInput!) {
+  createPatientProfile(input: $input) {
+    success
+    error
+    user {
+      id
+      email
+      phoneNumber
+      firstName
+      lastName
+    }
+    patient {
+      id
+      firstName
+      lastName
+      middleName
+      dateOfBirth
+      gender
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
+      profilePictureUrl
+    }
+  }
+}
+    `;
+export type CreatePatientProfileMutationFn = Apollo.MutationFunction<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>;
+
+/**
+ * __useCreatePatientProfileMutation__
+ *
+ * To run a mutation, you first call `useCreatePatientProfileMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCreatePatientProfileMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [createPatientProfileMutation, { data, loading, error }] = useCreatePatientProfileMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreatePatientProfileMutation(baseOptions?: Apollo.MutationHookOptions<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>(CreatePatientProfileDocument, options);
+      }
+export type CreatePatientProfileMutationHookResult = ReturnType<typeof useCreatePatientProfileMutation>;
+export type CreatePatientProfileMutationResult = Apollo.MutationResult<CreatePatientProfileMutation>;
+export type CreatePatientProfileMutationOptions = Apollo.BaseMutationOptions<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>;
 export const EditProfileDocument = gql`
     mutation EditProfile($input: EditProfileInput!) {
   editProfile(input: $input) {
