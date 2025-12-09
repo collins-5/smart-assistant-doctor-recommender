@@ -1,72 +1,78 @@
-import { Stack, Redirect, useRouter } from "expo-router";
-import { createContext, useContext, useState, useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+// app/_layout.tsx
+
 import "../../global.css";
 import "~/components/ui/bottom-sheets";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SheetProvider } from "react-native-actions-sheet";
+
 import { ApolloProvider } from "@apollo/client";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SheetProvider } from "react-native-actions-sheet";
+import { useEffect } from "react";
+
 import client from "~/lib/graphql/apolloClient";
+import SessionInitializer, {
+  useSessionInit,
+} from "~/components/core/session-initializer";
+import { useOnboardingStore } from "~/lib/store/onboarding";
+import { useSessionStore } from "~/lib/store/auth";
 
+// This component controls navigation based on auth state
+const AuthNavigator = () => {
+  const router = useRouter();
+  const segments = useSegments();
 
-// Define the shape of the AuthContext
-interface AuthContextType {
-  loggedIn: boolean;
-  setLoggedIn: (value: boolean) => void;
-}
+  const { loading } = useSessionInit();
+  const { isAuthenticated } = useSessionStore();
+  const { isOnboarded } = useOnboardingStore();
 
-// Create AuthContext with a default value
-const AuthContext = createContext<AuthContextType>({
-  loggedIn: false,
-  setLoggedIn: () => {},
-});
+  useEffect(() => {
+    if (loading) return; // Wait for session verification
 
-// Custom hook to use AuthContext
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+    const currentGroup = segments[0]; // "(protected)", "(auth)", "(onboarding)"
+
+    if (isAuthenticated) {
+      // Must be in protected area
+      if (currentGroup !== "(protected)") {
+        router.replace("/(protected)/(tabs)/dashboard");
+      }
+    } else {
+      // Not authenticated → go to onboarding or auth
+      if (!isOnboarded) {
+        if (currentGroup !== "(onboarding)") {
+          router.replace("/(onboarding)/welcome");
+        }
+      } else {
+        if (currentGroup !== "(auth)") {
+          router.replace("/(auth)/sign-in");
+        }
+      }
+    }
+  }, [loading, isAuthenticated, isOnboarded, segments, router]);
+
+  // Render nothing — we control navigation via router.replace
+  return null;
 };
 
+// Root Layout — clean, simple, just defines the routes
 export default function RootLayout() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const router = useRouter();
-
-  // Handle initial redirect based on login state
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loggedIn) {
-        router.replace("/(tabs)/dashboard");
-      } else {
-        router.replace("/(onboarding)/welcome");
-      }
-    }, 0);
-    return () => clearTimeout(timer); // Cleanup
-  }, [loggedIn, router]);
-
-
   return (
     <ApolloProvider client={client}>
-      <SheetProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthContext.Provider value={{ loggedIn, setLoggedIn }}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="(onboarding)"
-                  options={{ headerShown: false }}
-                />
-              </Stack>
-          </AuthContext.Provider>
-        </GestureHandlerRootView>
-      </SheetProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SheetProvider>
+          <SessionInitializer>
+            {/* Define all route groups */}
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(protected)" />
+              {/* Add any other top-level routes here */}
+            </Stack>
+
+            {/* This controls the actual navigation */}
+            <AuthNavigator />
+          </SessionInitializer>
+        </SheetProvider>
+      </GestureHandlerRootView>
     </ApolloProvider>
   );
 }

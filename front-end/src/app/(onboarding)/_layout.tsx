@@ -1,13 +1,13 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "react-native";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
-import { ScreenWrapper } from "~/components/core/screen-wrapper";
+import { Stack } from "expo-router"
+import ThemeStatusBar from "~/components/core/status-bar";
 
 export default function OnboardingLayout() {
   return (
     <>
-    <StatusBar backgroundColor={'teal'} />
+      <ThemeStatusBar />
+
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="welcome" />
         <Stack.Screen name="create-profile" />
       </Stack>

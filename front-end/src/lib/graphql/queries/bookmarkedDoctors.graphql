@@ -5,6 +5,7 @@ query GetBookmarkedDoctors {
     firstName
     lastName
     fullName
+    profilePictureUrl
     primarySpecialty {
       id
       name

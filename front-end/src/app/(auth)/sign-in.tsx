@@ -1,5 +1,5 @@
 // src/app/(onboarding)/(auth)/sign-in.tsx
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +17,6 @@ import {
   CardDescription,
 } from "~/components/ui/card";
 import { SheetManager } from "react-native-actions-sheet";
-import { Image } from "expo-image";
 import { useSignIn } from "~/lib/hooks/useSignIn";
 
 // Zod schema
@@ -30,8 +29,7 @@ type SignInForm = z.infer<typeof signInSchema>;
 
 export default function SignInScreen() {
   const router = useRouter();
-  
-  // Your hook returns: emailOrPhone, password, submit(), loading, error
+
   const {
     emailOrPhone,
     setEmailOrPhone,
@@ -57,9 +55,8 @@ export default function SignInScreen() {
   const onSubmit = async () => {
     try {
       await submit(); // ← NO ARGUMENTS — uses internal state
-      router.replace("/(onboarding)/create-profile");
-    } catch (err: any) {
-    }
+      router.replace("/(onboarding)/");
+    } catch (err: any) {}
   };
 
   return (
@@ -69,88 +66,87 @@ export default function SignInScreen() {
         <View className="flex-1 bg-background justify-center px-6 py-4">
           <Card className="bg-card rounded-2xl shadow-md">
             <CardHeader className="items-center pb-4">
-              <CardTitle className="text-3xl font-bold text-primary mb-2">
-                Sign In
-                <View className="items-center mb-10">
-                  <Image
-                    source={require("../../../../assets/splash-logo.png")}
-                    className="w-32 h-32"
-                    contentFit="contain"
-                  />
-                </View>
+              <CardTitle className="py-8">
+                <CardDescription className="text-center text-primary font-extrabold text-3xl">
+                  Sign In
+                </CardDescription>
               </CardTitle>
-              <CardDescription className="text-center text-xl">
-                Welcome back
-              </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
               <View className="flex-row justify-center space-x-3">
-                <Button text="Google" variant="outline" size="default" className="flex-1" disabled />
+                <Button
+                  text="Google"
+                  variant="outline"
+                  size="default"
+                  className="flex-1 text-center"
+                  disabled
+                />
               </View>
-
               <Separator className="my-6 bg-foreground" text="OR" />
 
-              {/* Email/Phone */}
-              <Controller
-                control={control}
-                name="emailOrPhoneNumber"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    className="rounded-lg px-4 py-3 text-black"
-                    placeholder="Email or Phone Number"
-                    placeholderTextColor="rgb(105, 105, 105)"
-                    value={value}
-                    onChangeText={(t) => {
-                      onChange(t);
-                      setEmailOrPhone(t); // Sync with hook
-                    }}
-                    error={errors.emailOrPhoneNumber?.message}
-                    keyboardType="default"
-                    autoCapitalize="none"
-                    iconProps={{
-                      name: "account-outline",
-                      size: 20,
-                      className: "text-gray-500",
-                    }}
-                  />
-                )}
-              />
+              <View className="my-2">
+                {/* Email/Phone */}
+                <Controller
+                  control={control}
+                  name="emailOrPhoneNumber"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      className="rounded-lg px-4 py-3 text-black"
+                      placeholder="username"
+                      placeholderTextColor="rgb(105, 105, 105)"
+                      value={value}
+                      onChangeText={(t) => {
+                        onChange(t);
+                        setEmailOrPhone(t); // Sync with hook
+                      }}
+                      error={errors.emailOrPhoneNumber?.message}
+                      keyboardType="default"
+                      autoCapitalize="none"
+                      iconProps={{
+                        name: "account-outline",
+                        size: 20,
+                        className: "text-gray-500",
+                      }}
+                    />
+                  )}
+                />
+              </View>
 
-              {/* Password */}
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    className="rounded-lg px-4 py-3 text-black"
-                    placeholder="••••••••"
-                    placeholderTextColor="rgb(105, 105, 105)"
-                    value={value}
-                    onChangeText={(t) => {
-                      onChange(t);
-                      setPassword(t); // Sync with hook
-                    }}
-                    error={errors.password?.message}
-                    secureTextEntry
-                    iconProps={{
-                      name: "lock-outline",
-                      size: 20,
-                      className: "text-black",
-                    }}
-                  />
-                )}
-              />
-
+              <View className="my-2">
+                {/* Password */}
+                <Controller
+                  control={control}
+                  name="password"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      className="rounded-lg px-4 py-3 text-black"
+                      placeholder="••••••••"
+                      placeholderTextColor="rgb(105, 105, 105)"
+                      value={value}
+                      onChangeText={(t) => {
+                        onChange(t);
+                        setPassword(t); // Sync with hook
+                      }}
+                      error={errors.password?.message}
+                      secureTextEntry
+                      iconProps={{
+                        name: "lock-outline",
+                        size: 20,
+                        className: "text-black",
+                      }}
+                    />
+                  )}
+                />
+              </View>
               <TouchableOpacity
                 onPress={() => SheetManager.show("reset-password")}
                 className="mb-6"
               >
-                <Text className="text-gray-500 text-sm text-right underline">
+                <Text className="text-foregrond text-sm text-right underline">
                   Forgot Password?
                 </Text>
               </TouchableOpacity>
-
               <Button
                 text="Sign In"
                 variant="default"
@@ -159,11 +155,11 @@ export default function SignInScreen() {
                 onPress={handleSubmit(onSubmit)}
                 disabled={loading}
               />
-
               {mutationError && (
-                <Text className="text-red-500 text-center">{mutationError}</Text>
+                <Text className="text-red-500 text-center">
+                  {mutationError}
+                </Text>
               )}
-
               <View className="flex-row justify-center mt-6">
                 <Text className="text-gray-600">Don't have an account? </Text>
                 <Link href="/(auth)/sign-up" asChild>

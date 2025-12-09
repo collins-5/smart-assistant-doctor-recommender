@@ -1,4 +1,3 @@
-# core/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import default_storage
@@ -107,10 +106,28 @@ class Doctor(models.Model):
     teleconsult_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     clinic_visit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     homecare_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # PROFILE PICTURE
+    profile_picture = models.ImageField(
+        upload_to='doctor_profile_pictures/',
+        null=True,
+        blank=True
+    )
 
     def save(self, *args, **kwargs):
+        # Delete old photo when updating
+        try:
+            old = Doctor.objects.get(pk=self.pk)
+            if old.profile_picture and old.profile_picture != self.profile_picture:
+                if default_storage.exists(old.profile_picture.path):
+                    default_storage.delete(old.profile_picture.path)
+        except Doctor.DoesNotExist:
+            pass
+        
+        # Update full_name
         if not self.full_name:
             self.full_name = f"{self.title} {self.first_name} {self.last_name}".strip()
+        
         super().save(*args, **kwargs)
 
     def __str__(self):

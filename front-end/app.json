@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "TaskSync",
-    "slug": "TaskSync",
+    "name": "SDR-health",
+    "slug": "SDR-health",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

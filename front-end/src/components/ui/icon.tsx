@@ -114,6 +114,7 @@ type ImageIconProps = {
   name: IconNames;
   size?: number;
   className?: string;
+  color?:string;
 };
 export type IconProps = ImageIconProps | ImageProps;
 

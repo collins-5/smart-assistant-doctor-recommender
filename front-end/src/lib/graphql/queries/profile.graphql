@@ -1,3 +1,4 @@
+# src/lib/graphql/queries/me.graphql  (or profile.graphql)
 query Profile {
   me {
     id
@@ -14,6 +15,17 @@ query Profile {
       gender
       email
       phoneNumber
+      profilePictureUrl
+
+      # Add these fields
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
     }
   }
 }

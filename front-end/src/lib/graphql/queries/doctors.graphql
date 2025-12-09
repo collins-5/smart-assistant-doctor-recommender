@@ -5,6 +5,7 @@ query GetDoctors {
     firstName
     lastName
     fullName
+    profilePictureUrl
     primarySpecialty {
       id
       name

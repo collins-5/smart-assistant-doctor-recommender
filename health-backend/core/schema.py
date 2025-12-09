@@ -1,4 +1,3 @@
-# core/schema.py
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -57,7 +56,7 @@ class UserType(DjangoObjectType):
 
     class Meta:
         model = User
-        fields = ("id", "email", "phone_number", "first_name", "last_name", "is_active")
+        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "is_active")
 
     def resolve_patient(self, info):
         try:
@@ -67,9 +66,16 @@ class UserType(DjangoObjectType):
 
 
 class DoctorType(DjangoObjectType):
+    profile_picture_url = graphene.String()
+
     class Meta:
         model = Doctor
         fields = "__all__"
+
+    def resolve_profile_picture_url(self, info):
+        if self.profile_picture:
+            return info.context.build_absolute_uri(self.profile_picture.url)
+        return None
 
 
 class AppointmentType(DjangoObjectType):
@@ -109,7 +115,7 @@ class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     middle_name = graphene.String()
-    date_of_birth = graphene.Date()
+    date_of_birth = graphene.Date(required=True)
     gender = graphene.String(required=True)
 
 
@@ -126,6 +132,7 @@ class EditProfileInput(graphene.InputObjectType):
 
 
 # ==================== MUTATIONS ====================
+
 class SignIn(graphene.Mutation):
     class Arguments:
         email_or_phone_number = graphene.String(required=True)
@@ -138,51 +145,65 @@ class SignIn(graphene.Mutation):
     def mutate(root, info, email_or_phone_number, password):
         user = authenticate(username=email_or_phone_number, password=password)
         if not user:
+            try:
+                user_by_email = User.objects.get(email__iexact=email_or_phone_number)
+                user = authenticate(username=user_by_email.username, password=password)
+            except User.DoesNotExist:
+                pass
+            if not user:
+                try:
+                    user_by_phone = User.objects.get(phone_number=email_or_phone_number)
+                    user = authenticate(username=user_by_phone.username, password=password)
+                except User.DoesNotExist:
+                    pass
+
+        if not user:
             raise Exception("Invalid credentials")
+
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
 
 
 class SignUp(graphene.Mutation):
     class Arguments:
+        username = graphene.String(required=True)
         email = graphene.String(required=True)
         phone_number = graphene.String(required=True)
         password = graphene.String(required=True)
-        first_name = graphene.String(required=True)
-        last_name = graphene.String(required=True)
-        date_of_birth = graphene.Date(required=True)
-        gender = graphene.String(required=True)
 
+    jwt_token = graphene.String()
     user = graphene.Field(UserType)
-    patient = graphene.Field(PatientType)
     success = graphene.Boolean()
     error = graphene.String()
 
     @staticmethod
-    def mutate(root, info, email, phone_number, password, first_name, last_name, date_of_birth, gender):
-        if User.objects.filter(email=email).exists():
-            return SignUp(success=False, error="Email already exists")
+    def mutate(root, info, username, email, phone_number, password):
+        if User.objects.filter(username__iexact=username).exists():
+            return SignUp(success=False, error="Username already taken")
+        if User.objects.filter(email__iexact=email).exists():
+            return SignUp(success=False, error="Email already registered")
         if User.objects.filter(phone_number=phone_number).exists():
-            return SignUp(success=False, error="Phone number already exists")
+            return SignUp(success=False, error="Phone number already registered")
+
+        username = username.lower().strip()
+        email = email.lower().strip()
 
         user = User.objects.create_user(
-            username=email,
+            username=username,
             email=email,
             phone_number=phone_number,
-            first_name=first_name,
-            last_name=last_name,
         )
         user.set_password(password)
         user.save()
 
-        patient = Patient.objects.create(
-            user=user,
-            first_name=first_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth,
-            gender=gender.upper(),
+        token = get_token(user)
+
+        return SignUp(
+            success=True,
+            error=None,
+            jwt_token=token,
+            user=user
         )
-        return SignUp(user=user, patient=patient, success=True, error=None)
 
 
 class CreatePatientProfile(graphene.Mutation):
@@ -197,6 +218,7 @@ class CreatePatientProfile(graphene.Mutation):
     @login_required
     def mutate(root, info, input):
         user = info.context.user
+
         if hasattr(user, "patient"):
             return CreatePatientProfile(success=False, error="Profile already exists")
 
@@ -205,9 +227,10 @@ class CreatePatientProfile(graphene.Mutation):
             first_name=input.first_name,
             last_name=input.last_name,
             middle_name=input.get("middle_name") or "",
-            date_of_birth=input.get("date_of_birth"),
+            date_of_birth=input.date_of_birth,
             gender=input.gender.upper(),
         )
+
         return CreatePatientProfile(patient=patient, success=True)
 
 
@@ -229,7 +252,6 @@ class EditProfile(graphene.Mutation):
         except AttributeError:
             return EditProfile(success=False, error="Patient profile does not exist")
 
-        # Update User fields
         if input.email is not None:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return EditProfile(success=False, error="Email already in use")
@@ -240,7 +262,6 @@ class EditProfile(graphene.Mutation):
             user.phone_number = input.phone_number
         user.save()
 
-        # Update Patient fields
         if input.first_name is not None:
             patient.first_name = input.first_name
         if input.last_name is not None:
@@ -252,7 +273,6 @@ class EditProfile(graphene.Mutation):
         if input.gender is not None:
             patient.gender = input.gender.upper()
 
-        # Country & County
         if input.country_id is not None:
             try:
                 patient.country = Country.objects.get(id=input.country_id)
@@ -265,7 +285,6 @@ class EditProfile(graphene.Mutation):
                 return EditProfile(success=False, error="Invalid county")
 
         patient.save()
-
         return EditProfile(patient=patient, user=user, success=True)
 
 
@@ -358,8 +377,6 @@ class Query(graphene.ObjectType):
     patients = graphene.List(PatientType)
     appointments = graphene.List(AppointmentType)
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
-
-    # NEW: Countries & Counties
     countries = graphene.List(CountryType)
     counties = graphene.List(CountyType, country_id=graphene.Int())
 

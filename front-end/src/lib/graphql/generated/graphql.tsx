@@ -61,6 +61,8 @@ export type BookmarkedDoctorType = {
   id: Scalars['ID']['output'];
   lastName: Scalars['String']['output'];
   primarySpecialty?: Maybe<SpecialtyType>;
+  profilePicture?: Maybe<Scalars['String']['output']>;
+  profilePictureUrl?: Maybe<Scalars['String']['output']>;
   subSpecialties: Array<SpecialtyType>;
   takesPostpaidPayment: Scalars['Boolean']['output'];
   takesPrepaidPayment: Scalars['Boolean']['output'];
@@ -101,7 +103,7 @@ export type CreatePatientProfile = {
 };
 
 export type CreatePatientProfileInput = {
-  dateOfBirth?: InputMaybe<Scalars['Date']['input']>;
+  dateOfBirth: Scalars['Date']['input'];
   firstName: Scalars['String']['input'];
   gender: Scalars['String']['input'];
   lastName: Scalars['String']['input'];
@@ -118,6 +120,8 @@ export type DoctorType = {
   id: Scalars['ID']['output'];
   lastName: Scalars['String']['output'];
   primarySpecialty?: Maybe<SpecialtyType>;
+  profilePicture?: Maybe<Scalars['String']['output']>;
+  profilePictureUrl?: Maybe<Scalars['String']['output']>;
   subSpecialties: Array<SpecialtyType>;
   takesPostpaidPayment: Scalars['Boolean']['output'];
   takesPrepaidPayment: Scalars['Boolean']['output'];
@@ -194,13 +198,10 @@ export type MutationSignInArgs = {
 
 
 export type MutationSignUpArgs = {
-  dateOfBirth: Scalars['Date']['input'];
   email: Scalars['String']['input'];
-  firstName: Scalars['String']['input'];
-  gender: Scalars['String']['input'];
-  lastName: Scalars['String']['input'];
   password: Scalars['String']['input'];
   phoneNumber: Scalars['String']['input'];
+  username: Scalars['String']['input'];
 };
 
 
@@ -288,7 +289,7 @@ export type SignIn = {
 export type SignUp = {
   __typename?: 'SignUp';
   error?: Maybe<Scalars['String']['output']>;
-  patient?: Maybe<PatientType>;
+  jwtToken?: Maybe<Scalars['String']['output']>;
   success?: Maybe<Scalars['Boolean']['output']>;
   user?: Maybe<UserType>;
 };
@@ -326,6 +327,8 @@ export type UserType = {
   lastName: Scalars['String']['output'];
   patient?: Maybe<PatientType>;
   phoneNumber?: Maybe<Scalars['String']['output']>;
+  /** Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+  username: Scalars['String']['output'];
 };
 
 export type Verify = {
@@ -349,27 +352,31 @@ export type SignInMutationVariables = Exact<{
 export type SignInMutation = { __typename?: 'Mutation', signIn?: { __typename?: 'SignIn', jwtToken?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, gender: string, dateOfBirth?: any | null, email?: string | null, phoneNumber?: string | null } | null } | null } | null };
 
 export type SignUpMutationVariables = Exact<{
+  username: Scalars['String']['input'];
   email: Scalars['String']['input'];
   phoneNumber: Scalars['String']['input'];
   password: Scalars['String']['input'];
-  firstName: Scalars['String']['input'];
-  lastName: Scalars['String']['input'];
-  dateOfBirth: Scalars['Date']['input'];
-  gender: Scalars['String']['input'];
 }>;
 
 
-export type SignUpMutation = { __typename?: 'Mutation', signUp?: { __typename?: 'SignUp', success?: boolean | null, error?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string } | null, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, gender: string, dateOfBirth?: any | null } | null } | null };
+export type SignUpMutation = { __typename?: 'Mutation', signUp?: { __typename?: 'SignUp', success?: boolean | null, error?: string | null, jwtToken?: string | null, user?: { __typename?: 'UserType', id: string, username: string, email?: string | null, phoneNumber?: string | null } | null } | null };
+
+export type VerifyTokenMutationVariables = Exact<{
+  token: Scalars['String']['input'];
+}>;
+
+
+export type VerifyTokenMutation = { __typename?: 'Mutation', verifyToken?: { __typename?: 'Verify', payload: any } | null };
 
 export type GetBookmarkedDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetBookmarkedDoctorsQuery = { __typename?: 'Query', bookmarkedDoctors?: Array<{ __typename?: 'BookmarkedDoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null } | null> | null };
+export type GetBookmarkedDoctorsQuery = { __typename?: 'Query', bookmarkedDoctors?: Array<{ __typename?: 'BookmarkedDoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null } | null> | null };
 
 export type GetDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }> } | null> | null };
+export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }> } | null> | null };
 
 export type GetMyAppointmentsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -379,7 +386,7 @@ export type GetMyAppointmentsQuery = { __typename?: 'Query', appointments?: Arra
 export type ProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type ProfileQuery = { __typename?: 'Query', me?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, email?: string | null, phoneNumber?: string | null } | null } | null };
+export type ProfileQuery = { __typename?: 'Query', me?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, email?: string | null, phoneNumber?: string | null, profilePictureUrl?: string | null, country?: { __typename?: 'CountryType', id: string, name: string } | null, county?: { __typename?: 'CountyType', id: string, name: string } | null } | null } | null };
 
 export type GetSpecialtiesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -503,31 +510,21 @@ export type SignInMutationHookResult = ReturnType<typeof useSignInMutation>;
 export type SignInMutationResult = Apollo.MutationResult<SignInMutation>;
 export type SignInMutationOptions = Apollo.BaseMutationOptions<SignInMutation, SignInMutationVariables>;
 export const SignUpDocument = gql`
-    mutation SignUp($email: String!, $phoneNumber: String!, $password: String!, $firstName: String!, $lastName: String!, $dateOfBirth: Date!, $gender: String!) {
+    mutation SignUp($username: String!, $email: String!, $phoneNumber: String!, $password: String!) {
   signUp(
+    username: $username
     email: $email
     phoneNumber: $phoneNumber
     password: $password
-    firstName: $firstName
-    lastName: $lastName
-    dateOfBirth: $dateOfBirth
-    gender: $gender
   ) {
     success
     error
+    jwtToken
     user {
       id
+      username
       email
       phoneNumber
-      firstName
-      lastName
-    }
-    patient {
-      id
-      firstName
-      lastName
-      gender
-      dateOfBirth
     }
   }
 }
@@ -547,13 +544,10 @@ export type SignUpMutationFn = Apollo.MutationFunction<SignUpMutation, SignUpMut
  * @example
  * const [signUpMutation, { data, loading, error }] = useSignUpMutation({
  *   variables: {
+ *      username: // value for 'username'
  *      email: // value for 'email'
  *      phoneNumber: // value for 'phoneNumber'
  *      password: // value for 'password'
- *      firstName: // value for 'firstName'
- *      lastName: // value for 'lastName'
- *      dateOfBirth: // value for 'dateOfBirth'
- *      gender: // value for 'gender'
  *   },
  * });
  */
@@ -564,6 +558,39 @@ export function useSignUpMutation(baseOptions?: Apollo.MutationHookOptions<SignU
 export type SignUpMutationHookResult = ReturnType<typeof useSignUpMutation>;
 export type SignUpMutationResult = Apollo.MutationResult<SignUpMutation>;
 export type SignUpMutationOptions = Apollo.BaseMutationOptions<SignUpMutation, SignUpMutationVariables>;
+export const VerifyTokenDocument = gql`
+    mutation VerifyToken($token: String!) {
+  verifyToken(token: $token) {
+    payload
+  }
+}
+    `;
+export type VerifyTokenMutationFn = Apollo.MutationFunction<VerifyTokenMutation, VerifyTokenMutationVariables>;
+
+/**
+ * __useVerifyTokenMutation__
+ *
+ * To run a mutation, you first call `useVerifyTokenMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useVerifyTokenMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [verifyTokenMutation, { data, loading, error }] = useVerifyTokenMutation({
+ *   variables: {
+ *      token: // value for 'token'
+ *   },
+ * });
+ */
+export function useVerifyTokenMutation(baseOptions?: Apollo.MutationHookOptions<VerifyTokenMutation, VerifyTokenMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<VerifyTokenMutation, VerifyTokenMutationVariables>(VerifyTokenDocument, options);
+      }
+export type VerifyTokenMutationHookResult = ReturnType<typeof useVerifyTokenMutation>;
+export type VerifyTokenMutationResult = Apollo.MutationResult<VerifyTokenMutation>;
+export type VerifyTokenMutationOptions = Apollo.BaseMutationOptions<VerifyTokenMutation, VerifyTokenMutationVariables>;
 export const GetBookmarkedDoctorsDocument = gql`
     query GetBookmarkedDoctors {
   bookmarkedDoctors {
@@ -572,6 +599,7 @@ export const GetBookmarkedDoctorsDocument = gql`
     firstName
     lastName
     fullName
+    profilePictureUrl
     primarySpecialty {
       id
       name
@@ -622,6 +650,7 @@ export const GetDoctorsDocument = gql`
     firstName
     lastName
     fullName
+    profilePictureUrl
     primarySpecialty {
       id
       name
@@ -740,6 +769,15 @@ export const ProfileDocument = gql`
       gender
       email
       phoneNumber
+      profilePictureUrl
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
     }
   }
 }

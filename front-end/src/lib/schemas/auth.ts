@@ -2,16 +2,34 @@
 import { z } from "zod";
 
 export const signUpSchema = z
-    .object({
-        email: z.string().email("Invalid email").optional().or(z.literal("")),
-        phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-        password: z.string().min(6, "Password must be at least 6 characters"),
-        confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-        message: "Passwords do not match",
-        path: ["confirmPassword"],
-    });
+  .object({
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .regex(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and underscore allowed")
+      .transform((val) => val.toLowerCase()),
+
+    email: z.string().email("Invalid email address"),
+
+    phoneNumber: z
+      .string()
+      .min(10, "Phone number too short")
+      .regex(/^\+?[0-9]{10,15}$/, "Invalid phone number"),
+
+    password: z
+      .string()
+      .min(4, "Password must be at least 4 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password must contain uppercase, lowercase, and number"
+      ),
+
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export type SignUpForm = z.infer<typeof signUpSchema>;
 

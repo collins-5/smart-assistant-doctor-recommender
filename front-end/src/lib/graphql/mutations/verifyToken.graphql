@@ -1,0 +1,7 @@
+
+# src/lib/graphql/mutations/verifyToken.graphql
+mutation VerifyToken($token: String!) {
+  verifyToken(token: $token) {
+    payload
+  }
+}
