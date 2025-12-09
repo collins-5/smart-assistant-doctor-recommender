@@ -1,0 +1,23 @@
+query GetDoctors {
+  doctors {
+    id
+    title
+    firstName
+    lastName
+    fullName
+    profilePictureUrl
+    primarySpecialty {
+      id
+      name
+    }
+    subSpecialties {
+      id
+      name
+    }
+    teleconsultPrice
+    clinicVisitPrice
+    homecarePrice
+    takesPrepaidPayment
+    takesPostpaidPayment
+  }
+}

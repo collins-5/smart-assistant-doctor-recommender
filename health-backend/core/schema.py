@@ -1,4 +1,3 @@
-# core/schema.py
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -13,11 +12,23 @@ import uuid
 
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
-    PatientDoctorBookmark, Notification
+    PatientDoctorBookmark, Notification, Country, County
 )
 
 
 # ==================== TYPES ====================
+class CountryType(DjangoObjectType):
+    class Meta:
+        model = Country
+        fields = ("id", "name", "code")
+
+
+class CountyType(DjangoObjectType):
+    class Meta:
+        model = County
+        fields = ("id", "name", "country")
+
+
 class PatientType(DjangoObjectType):
     email = graphene.String()
     phone_number = graphene.String()
@@ -45,8 +56,7 @@ class UserType(DjangoObjectType):
 
     class Meta:
         model = User
-        fields = ("id", "email", "phone_number", "first_name", "last_name", "is_active")
-        convert_choices_to_enum = False
+        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "is_active")
 
     def resolve_patient(self, info):
         try:
@@ -56,9 +66,16 @@ class UserType(DjangoObjectType):
 
 
 class DoctorType(DjangoObjectType):
+    profile_picture_url = graphene.String()
+
     class Meta:
         model = Doctor
         fields = "__all__"
+
+    def resolve_profile_picture_url(self, info):
+        if self.profile_picture:
+            return info.context.build_absolute_uri(self.profile_picture.url)
+        return None
 
 
 class AppointmentType(DjangoObjectType):
@@ -81,9 +98,7 @@ class NotificationType(graphene.ObjectType):
     isRead = graphene.Boolean(required=True)
 
 
-# ==================== BOOKMARKED DOCTOR TYPE ====================
 class BookmarkedDoctorType(DoctorType):
-    """Same as DoctorType but used for bookmarked list (optional – you can reuse DoctorType)"""
     class Meta:
         model = Doctor
         fields = "__all__"
@@ -100,7 +115,7 @@ class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     middle_name = graphene.String()
-    date_of_birth = graphene.Date()
+    date_of_birth = graphene.Date(required=True)
     gender = graphene.String(required=True)
 
 
@@ -112,9 +127,12 @@ class EditProfileInput(graphene.InputObjectType):
     gender = graphene.String()
     email = graphene.String()
     phone_number = graphene.String()
+    country_id = graphene.Int()
+    county_id = graphene.Int()
 
 
 # ==================== MUTATIONS ====================
+
 class SignIn(graphene.Mutation):
     class Arguments:
         email_or_phone_number = graphene.String(required=True)
@@ -127,51 +145,65 @@ class SignIn(graphene.Mutation):
     def mutate(root, info, email_or_phone_number, password):
         user = authenticate(username=email_or_phone_number, password=password)
         if not user:
+            try:
+                user_by_email = User.objects.get(email__iexact=email_or_phone_number)
+                user = authenticate(username=user_by_email.username, password=password)
+            except User.DoesNotExist:
+                pass
+            if not user:
+                try:
+                    user_by_phone = User.objects.get(phone_number=email_or_phone_number)
+                    user = authenticate(username=user_by_phone.username, password=password)
+                except User.DoesNotExist:
+                    pass
+
+        if not user:
             raise Exception("Invalid credentials")
+
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
 
 
 class SignUp(graphene.Mutation):
     class Arguments:
+        username = graphene.String(required=True)
         email = graphene.String(required=True)
         phone_number = graphene.String(required=True)
         password = graphene.String(required=True)
-        first_name = graphene.String(required=True)
-        last_name = graphene.String(required=True)
-        date_of_birth = graphene.Date(required=True)
-        gender = graphene.String(required=True)
 
+    jwt_token = graphene.String()
     user = graphene.Field(UserType)
-    patient = graphene.Field(PatientType)
     success = graphene.Boolean()
     error = graphene.String()
 
     @staticmethod
-    def mutate(root, info, email, phone_number, password, first_name, last_name, date_of_birth, gender):
-        if User.objects.filter(email=email).exists():
-            return SignUp(success=False, error="Email already exists")
+    def mutate(root, info, username, email, phone_number, password):
+        if User.objects.filter(username__iexact=username).exists():
+            return SignUp(success=False, error="Username already taken")
+        if User.objects.filter(email__iexact=email).exists():
+            return SignUp(success=False, error="Email already registered")
         if User.objects.filter(phone_number=phone_number).exists():
-            return SignUp(success=False, error="Phone number already exists")
+            return SignUp(success=False, error="Phone number already registered")
+
+        username = username.lower().strip()
+        email = email.lower().strip()
 
         user = User.objects.create_user(
-            username=email,
+            username=username,
             email=email,
             phone_number=phone_number,
-            first_name=first_name,
-            last_name=last_name,
         )
         user.set_password(password)
         user.save()
 
-        patient = Patient.objects.create(
-            user=user,
-            first_name=first_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth,
-            gender=gender.upper(),
+        token = get_token(user)
+
+        return SignUp(
+            success=True,
+            error=None,
+            jwt_token=token,
+            user=user
         )
-        return SignUp(user=user, patient=patient, success=True, error=None)
 
 
 class CreatePatientProfile(graphene.Mutation):
@@ -186,6 +218,7 @@ class CreatePatientProfile(graphene.Mutation):
     @login_required
     def mutate(root, info, input):
         user = info.context.user
+
         if hasattr(user, "patient"):
             return CreatePatientProfile(success=False, error="Profile already exists")
 
@@ -194,9 +227,10 @@ class CreatePatientProfile(graphene.Mutation):
             first_name=input.first_name,
             last_name=input.last_name,
             middle_name=input.get("middle_name") or "",
-            date_of_birth=input.get("date_of_birth"),
+            date_of_birth=input.date_of_birth,
             gender=input.gender.upper(),
         )
+
         return CreatePatientProfile(patient=patient, success=True)
 
 
@@ -218,7 +252,6 @@ class EditProfile(graphene.Mutation):
         except AttributeError:
             return EditProfile(success=False, error="Patient profile does not exist")
 
-        # Update User
         if input.email is not None:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return EditProfile(success=False, error="Email already in use")
@@ -229,7 +262,6 @@ class EditProfile(graphene.Mutation):
             user.phone_number = input.phone_number
         user.save()
 
-        # Update Patient
         if input.first_name is not None:
             patient.first_name = input.first_name
         if input.last_name is not None:
@@ -240,8 +272,19 @@ class EditProfile(graphene.Mutation):
             patient.date_of_birth = input.date_of_birth
         if input.gender is not None:
             patient.gender = input.gender.upper()
-        patient.save()
 
+        if input.country_id is not None:
+            try:
+                patient.country = Country.objects.get(id=input.country_id)
+            except Country.DoesNotExist:
+                return EditProfile(success=False, error="Invalid country")
+        if input.county_id is not None:
+            try:
+                patient.county = County.objects.get(id=input.county_id)
+            except County.DoesNotExist:
+                return EditProfile(success=False, error="Invalid county")
+
+        patient.save()
         return EditProfile(patient=patient, user=user, success=True)
 
 
@@ -269,7 +312,6 @@ class BookAppointment(graphene.Mutation):
             rastuc_id=str(uuid.uuid4())
         )
 
-        # Send real-time notification
         async_to_sync(get_channel_layer().group_send)(
             f"notifications_{patient.id}",
             {
@@ -286,7 +328,6 @@ class BookAppointment(graphene.Mutation):
         return BookAppointment(appointment=appt)
 
 
-# ==================== BOOKMARK MUTATIONS ====================
 class BookmarkDoctor(graphene.Mutation):
     class Arguments:
         doctor_id = graphene.Int(required=True)
@@ -335,9 +376,9 @@ class Query(graphene.ObjectType):
     specialties = graphene.List(SpecialtyType)
     patients = graphene.List(PatientType)
     appointments = graphene.List(AppointmentType)
-
-    # NEW: Bookmarked Doctors
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
+    countries = graphene.List(CountryType)
+    counties = graphene.List(CountyType, country_id=graphene.Int())
 
     def resolve_me(self, info):
         return info.context.user if info.context.user.is_authenticated else None
@@ -368,6 +409,14 @@ class Query(graphene.ObjectType):
         bookmarks = PatientDoctorBookmark.objects.filter(patient=patient).values_list("doctor_id", flat=True)
         return Doctor.objects.filter(id__in=bookmarks).order_by('-patientdoctorbookmark__created_at')
 
+    def resolve_countries(root, info):
+        return Country.objects.all()
+
+    def resolve_counties(root, info, country_id=None):
+        if country_id:
+            return County.objects.filter(country_id=country_id)
+        return County.objects.all()
+
 
 # ==================== MUTATION ROOT ====================
 class Mutation(graphene.ObjectType):
@@ -380,8 +429,6 @@ class Mutation(graphene.ObjectType):
     create_patient_profile = CreatePatientProfile.Field()
     edit_profile = EditProfile.Field()
     book_appointment = BookAppointment.Field()
-
-    # Bookmark mutations
     bookmark_doctor = BookmarkDoctor.Field()
     unbookmark_doctor = UnbookmarkDoctor.Field()
 

@@ -1,0 +1,24 @@
+# src/graphql/mutations/SignUp.graphql
+mutation SignUp(
+  $username: String!
+  $email: String!
+  $phoneNumber: String!
+  $password: String!
+) {
+  signUp(
+    username: $username
+    email: $email
+    phoneNumber: $phoneNumber
+    password: $password
+  ) {
+    success
+    error
+    jwtToken
+    user {
+      id
+      username
+      email
+      phoneNumber
+    }
+  }
+}

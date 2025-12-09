@@ -4,7 +4,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
 from .models import (
     User, Patient, Doctor, Specialty, Appointment,
-    Organization, OrganizationClinic, PatientDoctorBookmark, Notification
+    Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
+    Country, County
 )
 
 # Optional: cleaner admin sidebar
@@ -33,9 +34,9 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender')
+    list_display = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender', 'country', 'county')
     search_fields = ('user__email', 'user__phone_number', 'first_name', 'last_name')
-    list_filter = ('gender', 'date_of_birth')
+    list_filter = ('gender', 'date_of_birth', 'country')
     raw_id_fields = ('user',)
 
 
@@ -101,3 +102,19 @@ class NotificationAdmin(admin.ModelAdmin):
     search_fields = ('patient__user__email', 'title', 'description')
     readonly_fields = ('created_at',)
     raw_id_fields = ('patient',)
+
+
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code')
+    search_fields = ('name', 'code')
+    ordering = ('name',)
+
+
+@admin.register(County)
+class CountyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'country')
+    search_fields = ('name', 'country__name')
+    list_filter = ('country',)
+    raw_id_fields = ('country',)
+    ordering = ('country__name', 'name')

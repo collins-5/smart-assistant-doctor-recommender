@@ -1,0 +1,31 @@
+# src/lib/graphql/queries/me.graphql  (or profile.graphql)
+query Profile {
+  me {
+    id
+    email
+    phoneNumber
+    firstName
+    lastName
+    patient {
+      id
+      firstName
+      lastName
+      middleName
+      dateOfBirth
+      gender
+      email
+      phoneNumber
+      profilePictureUrl
+
+      # Add these fields
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
+    }
+  }
+}

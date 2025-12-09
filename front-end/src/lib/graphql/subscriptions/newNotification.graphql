@@ -1,0 +1,9 @@
+subscription OnNewNotification($patientId: Int!) {
+  retrieveNewNotifications(patientId: $patientId) {
+    id
+    title
+    description
+    createdAt
+    isRead
+  }
+}

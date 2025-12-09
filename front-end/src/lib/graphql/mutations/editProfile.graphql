@@ -1,0 +1,30 @@
+mutation EditProfile($input: EditProfileInput!) {
+  editProfile(input: $input) {
+    success
+    error
+    user {
+      id
+      email
+      phoneNumber
+      firstName
+      lastName
+    }
+    patient {
+      id
+      firstName
+      lastName
+      middleName
+      dateOfBirth
+      gender
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
+      profilePictureUrl
+    }
+  }
+}

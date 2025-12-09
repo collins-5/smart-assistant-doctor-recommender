@@ -1,0 +1,21 @@
+mutation SignIn($emailOrPhoneNumber: String!, $password: String!) {
+  signIn(emailOrPhoneNumber: $emailOrPhoneNumber, password: $password) {
+    jwtToken
+    user {
+      id
+      email
+      phoneNumber
+      firstName
+      lastName
+      patient {
+        id
+        firstName
+        lastName
+        gender
+        dateOfBirth
+        email
+        phoneNumber
+      }
+    }
+  }
+}
