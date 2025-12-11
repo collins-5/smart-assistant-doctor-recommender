@@ -43,6 +43,7 @@ export default function ProfileScreen() {
           <View className="w-32 h-32 rounded-full bg-blue-500 border-4 border-white justify-center items-center">
             <Text className="text-white text-5xl font-bold">
               {profile.firstName[0]?.toUpperCase() || "U"}
+              {profile.lastName[0]?.toUpperCase()}
             </Text>
           </View>
         )}

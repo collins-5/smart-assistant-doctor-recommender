@@ -12,7 +12,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
-import DateTimePicker from "@react-native-community/datetimepicker"; // Use this
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 
 import { Input } from "~/components/ui/input";
@@ -61,7 +61,7 @@ export default function EditProfileScreen() {
   const { profile: rawProfile, loading: profileLoading } = useProfile();
   const {
     countries,
-    getCountiesByCountry,
+    getCountiesByCountryName, // ← Now using name-based version
     loading: locationsLoading,
   } = useCountries();
 
@@ -91,8 +91,25 @@ export default function EditProfileScreen() {
     },
   });
 
+  // Watch countryId from form
   const watchedCountryId = watch("countryId");
 
+  // Derive country name from selected countryId
+  const selectedCountryName = watchedCountryId
+    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name || null
+    : null;
+
+  // Get counties using country name
+  const countiesInSelectedCountry = selectedCountryName
+    ? getCountiesByCountryName(selectedCountryName)
+    : [];
+
+  // Reset county when country changes
+  useEffect(() => {
+    setValue("countyId", null);
+  }, [watchedCountryId, setValue]);
+
+  // Populate form with existing profile data
   useEffect(() => {
     if (profile && !hasReset.current) {
       const dob = profile.dateOfBirth
@@ -111,13 +128,10 @@ export default function EditProfileScreen() {
         countryId: profile.countryId?.toString() || null,
         countyId: profile.countyId?.toString() || null,
       });
+
       hasReset.current = true;
     }
   }, [profile, reset]);
-
-  useEffect(() => {
-    setValue("countyId", null);
-  }, [watchedCountryId, setValue]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -132,6 +146,8 @@ export default function EditProfileScreen() {
         countryId: data.countryId || undefined,
         countyId: data.countyId || undefined,
       });
+
+      // Optional: trigger refetch on profile tab when going back
       router.back();
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to update profile");
@@ -140,7 +156,7 @@ export default function EditProfileScreen() {
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || date;
-    setShowDatePicker(Platform.OS === "ios"); // Keep open on iOS, close on Android
+    setShowDatePicker(Platform.OS === "ios");
     setDate(currentDate);
     setValue("dateOfBirth", currentDate.toISOString().split("T")[0], {
       shouldDirty: true,
@@ -185,9 +201,12 @@ export default function EditProfileScreen() {
             className="w-12"
             rightIcon={<Icon name="arrow-left" size={32} />}
           />
-          <View className="flex justify-center items-center">
-            <Text className="text-primary-foreground text-3xl font-extrabold">Edit Profile</Text>
+          <View className="flex justify-center items-center flex-1">
+            <Text className="text-primary-foreground text-3xl font-extrabold">
+              Edit Profile
+            </Text>
           </View>
+          <View className="w-12" />
         </View>
 
         <View className="px-6 py-8">
@@ -202,6 +221,7 @@ export default function EditProfileScreen() {
             <CardContent className="space-y-4">
               {step === 1 && (
                 <>
+                  {/* Step 1: Personal Info (unchanged) */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -303,18 +323,10 @@ export default function EditProfileScreen() {
                               <TouchableOpacity
                                 key={g}
                                 onPress={() => field.onChange(g)}
-                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${
-                                  field.value === g
-                                    ? "bg-primary border-primary"
-                                    : "border-muted"
-                                }`}
+                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${field.value === g ? "bg-primary border-primary" : "border-muted"}`}
                               >
                                 <Text
-                                  className={`text-center font-medium ${
-                                    field.value === g
-                                      ? "text-white"
-                                      : "text-foreground"
-                                  }`}
+                                  className={`text-center font-medium ${field.value === g ? "text-white" : "text-foreground"}`}
                                 >
                                   {g === "M"
                                     ? "Male"
@@ -368,20 +380,25 @@ export default function EditProfileScreen() {
                     />
                   </View>
 
-                  <Button
-                    text="Next →"
-                    onPress={() => setStep(2)}
-                    className="mt-6"
-                  />
+                  <View className="mt-6">
+                    <Button
+                      text="Next"
+                      className="text-xl"
+                      rightIcon={<Icon name="arrow-right" />}
+                      onPress={() => setStep(2)}
+                    />
+                  </View>
                 </>
               )}
 
+              {/* Step 2: Location – Now using country name */}
               {step === 2 && (
                 <>
                   <Text className="text-lg font-medium text-foreground mb-4">
                     Your Location
                   </Text>
 
+                  {/* Country Select */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -415,6 +432,7 @@ export default function EditProfileScreen() {
                     />
                   </View>
 
+                  {/* County Select – Using country name */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -424,34 +442,31 @@ export default function EditProfileScreen() {
                           value={field.value}
                           onValueChange={field.onChange}
                           placeholder={
-                            !watchedCountryId
+                            !selectedCountryName
                               ? "First select country"
                               : "Select County"
                           }
-                          disabled={!watchedCountryId}
+                          disabled={!selectedCountryName}
                         >
                           <SelectTrigger>
                             <Text>
                               {field.value
-                                ? getCountiesByCountry(
-                                    Number(watchedCountryId)
-                                  ).find((c) => c.id.toString() === field.value)
-                                    ?.name || "Select County"
-                                : !watchedCountryId
-                                  ? "First select country"
-                                  : "Select County"}
+                                ? countiesInSelectedCountry.find(
+                                    (c) => c.id.toString() === field.value
+                                  )?.name || "Select County"
+                                : selectedCountryName
+                                  ? "Select County"
+                                  : "First select country"}
                             </Text>
                           </SelectTrigger>
                           <SelectContent>
-                            {getCountiesByCountry(Number(watchedCountryId)).map(
-                              (county) => (
-                                <SelectItem
-                                  key={county.id}
-                                  label={county.name}
-                                  value={county.id.toString()}
-                                />
-                              )
-                            )}
+                            {countiesInSelectedCountry.map((county) => (
+                              <SelectItem
+                                key={county.id}
+                                label={county.name}
+                                value={county.id.toString()}
+                              />
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -460,16 +475,16 @@ export default function EditProfileScreen() {
 
                   <View className="flex-row justify-between mt-8 gap-3">
                     <Button
-                      text="← Back"
+                      text="Back"
                       onPress={() => setStep(1)}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 text-center"
                     />
                     <Button
                       text={loading ? "Saving..." : "Save Changes"}
                       onPress={handleSubmit(onSubmit)}
                       disabled={loading || !isDirty}
-                      className="flex-1"
+                      className="flex-1 text-center"
                     />
                   </View>
                 </>

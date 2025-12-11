@@ -2,13 +2,16 @@
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import type { FC } from "react";
 
+import { BookmarkDoctorButton } from "./bookmark-button";
+import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
+
 interface Specialty {
   id: string | number;
   name: string;
 }
 
 interface DoctorCardProps {
-  id: string | number;
+  id: number;
   title?: string | null;
   firstName?: string | null;
   lastName?: string | null;
@@ -23,6 +26,7 @@ interface DoctorCardProps {
 }
 
 export const DoctorCard: FC<DoctorCardProps> = ({
+  id,
   firstName,
   lastName,
   fullName,
@@ -34,12 +38,16 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   homecarePrice,
   onPress,
 }) => {
+  // Use your existing hook – it reads from the same cache that useBookmarkDoctor updates
+  const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
+  const isBookmarked = bookmarkedDoctors.some((doc: any) => doc.id === id);
+
   const CardWrapper = onPress ? TouchableOpacity : View;
 
   return (
     <CardWrapper
       onPress={onPress}
-      className="p-4 bg-white m-2 rounded-lg shadow flex-row"
+      className="p-4 bg-white m-2 rounded-lg shadow flex-row relative"
       activeOpacity={onPress ? 0.7 : 1}
     >
       {/* Profile Picture */}
@@ -61,12 +69,12 @@ export const DoctorCard: FC<DoctorCardProps> = ({
       </View>
 
       {/* Doctor Info */}
-      <View className="flex-1">
+      <View className="flex-1 pr-10">
+        {/* pr-10 to make space for bookmark button */}
         <Text className="text-lg font-bold text-teal-600">{fullName}</Text>
         <Text className="text-gray-600">
           {primarySpecialty?.name || "General Practice"}
         </Text>
-
         {subSpecialties && subSpecialties.length > 0 && (
           <View className="mt-3">
             <Text className="text-sm font-semibold text-gray-600 mb-1">
@@ -86,18 +94,31 @@ export const DoctorCard: FC<DoctorCardProps> = ({
             </View>
           </View>
         )}
-
-        <View className="flex-row justify-between mt-2">
-          <Text className="text-xs text-gray-500">
-            Tele: KES {teleconsultPrice}
-          </Text>
-          <Text className="text-xs text-gray-500">
-            Clinic: KES {clinicVisitPrice}
-          </Text>
-          <Text className="text-xs text-gray-500">
-            Home: KES {homecarePrice}
-          </Text>
+        <View className="flex-row justify-between mt-4">
+          {teleconsultPrice != null && (
+            <Text className="text-xs text-gray-500">
+              Tele: KES {teleconsultPrice}
+            </Text>
+          )}
+          {clinicVisitPrice != null && (
+            <Text className="text-xs text-gray-500">
+              Clinic: KES {clinicVisitPrice}
+            </Text>
+          )}
+          {homecarePrice != null && (
+            <Text className="text-xs text-gray-500">
+              Home: KES {homecarePrice}
+            </Text>
+          )}
         </View>
+      </View>
+
+      {/* Bookmark Button – top right */}
+      <View className="absolute top-3 right-3 z-10">
+        <BookmarkDoctorButton
+          doctorId={id}
+          size={24}
+        />
       </View>
     </CardWrapper>
   );

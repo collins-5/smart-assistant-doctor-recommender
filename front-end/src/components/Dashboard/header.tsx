@@ -37,7 +37,8 @@ export default function Header() {
           ) : (
             <View className="w-14 h-14 rounded-full bg-white/20 border-4 border-white shadow-lg justify-center items-center backdrop-blur-md">
               <Text className="text-white text-3xl font-bold">
-                {firstName[0]?.toUpperCase()}
+                {profile?.firstName[0]?.toUpperCase() || "U"}
+                {profile?.lastName[0]?.toUpperCase()}
               </Text>
             </View>
           )}

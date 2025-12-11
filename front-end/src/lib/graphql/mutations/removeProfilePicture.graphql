@@ -1,0 +1,10 @@
+mutation RemoveProfilePicture {
+  removeProfilePicture {
+    success
+    error
+    patient {
+      id
+      profilePictureUrl
+    }
+  }
+}

@@ -1,0 +1,5 @@
+mutation UnbookmarkDoctor($doctorId: Int!) {
+  unbookmarkDoctor(doctorId: $doctorId) {
+    success
+  }
+}

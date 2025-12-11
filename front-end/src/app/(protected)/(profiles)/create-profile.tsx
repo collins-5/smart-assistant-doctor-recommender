@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { Input } from "~/components/ui/input";
@@ -48,12 +48,15 @@ export default function CreateProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const { submit, loading } = useCreateProfile();
-  const { countries, getCountiesByCountry, loading: locationsLoading } = useCountries();
+  const {
+    countries,
+    getCountiesByCountryName, // ← Now using name-based function
+    loading: locationsLoading,
+  } = useCountries();
 
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     setValue,
     formState: { errors, isDirty },
@@ -72,8 +75,20 @@ export default function CreateProfileScreen() {
     },
   });
 
+  // Watch countryId (string like "233")
   const watchedCountryId = watch("countryId");
 
+  // Derive country name from selected countryId
+  const selectedCountryName = watchedCountryId
+    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name
+    : null;
+
+  // Get counties using country name
+  const countiesInSelectedCountry = selectedCountryName
+    ? getCountiesByCountryName(selectedCountryName)
+    : [];
+
+  // Reset county when country changes
   useEffect(() => {
     setValue("countyId", null);
   }, [watchedCountryId, setValue]);
@@ -91,9 +106,17 @@ export default function CreateProfileScreen() {
         countryId: data.countryId || undefined,
         countyId: data.countyId || undefined,
       });
-      Alert.alert("Success", "Profile created successfully!", [
-        { text: "OK", onPress: () => router.replace("/(tabs)/profile") },
-      ]);
+     Alert.alert("Success", "Profile created successfully!", [
+       {
+         text: "OK",
+         onPress: () => {
+           router.replace({
+             pathname: "/(tabs)/profile",
+             params: { refetch: Date.now().toString() }, // Triggers refetch
+           });
+         },
+       },
+     ]);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to create profile");
     }
@@ -111,7 +134,7 @@ export default function CreateProfileScreen() {
   if (locationsLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <Text className="text-foreground">Loading locations...</Text>
       </View>
     );
   }
@@ -125,7 +148,9 @@ export default function CreateProfileScreen() {
               step === i ? "bg-primary" : "bg-muted"
             }`}
           >
-            <Text className={`font-bold ${step === i ? "text-white" : "text-foreground"}`}>
+            <Text
+              className={`font-bold ${step === i ? "text-white" : "text-foreground"}`}
+            >
               {i}
             </Text>
           </View>
@@ -155,13 +180,15 @@ export default function CreateProfileScreen() {
         <View className="px-6 py-8">
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-2xl text-center">Complete Your Profile</CardTitle>
+              <CardTitle className="text-2xl text-center">
+                Complete Your Profile
+              </CardTitle>
               <StepIndicator />
             </CardHeader>
             <CardContent className="space-y-4">
               {step === 1 && (
                 <>
-                  {/* Same fields as edit-profile step 1 */}
+                  {/* Step 1 fields unchanged */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -218,7 +245,9 @@ export default function CreateProfileScreen() {
                           >
                             <Text
                               className={
-                                field.value ? "text-foreground" : "text-muted-foreground"
+                                field.value
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
                               }
                             >
                               {field.value
@@ -235,7 +264,9 @@ export default function CreateProfileScreen() {
                             <DateTimePicker
                               value={date}
                               mode="date"
-                              display={Platform.OS === "ios" ? "inline" : "default"}
+                              display={
+                                Platform.OS === "ios" ? "inline" : "default"
+                              }
                               maximumDate={new Date()}
                               onChange={onDateChange}
                             />
@@ -251,22 +282,32 @@ export default function CreateProfileScreen() {
                       name="gender"
                       render={({ field }) => (
                         <View className="space-y-3">
-                          <Text className="text-foreground/80 font-medium">Gender</Text>
+                          <Text className="text-foreground/80 font-medium">
+                            Gender
+                          </Text>
                           <View className="flex-row justify-between">
                             {(["M", "F", "O"] as const).map((g) => (
                               <TouchableOpacity
                                 key={g}
                                 onPress={() => field.onChange(g)}
                                 className={`flex-1 mx-1 py-4 rounded-xl border-2 ${
-                                  field.value === g ? "bg-primary border-primary" : "border-muted"
+                                  field.value === g
+                                    ? "bg-primary border-primary"
+                                    : "border-muted"
                                 }`}
                               >
                                 <Text
                                   className={`text-center font-medium ${
-                                    field.value === g ? "text-white" : "text-foreground"
+                                    field.value === g
+                                      ? "text-white"
+                                      : "text-foreground"
                                   }`}
                                 >
-                                  {g === "M" ? "Male" : g === "F" ? "Female" : "Other"}
+                                  {g === "M"
+                                    ? "Male"
+                                    : g === "F"
+                                      ? "Female"
+                                      : "Other"}
                                 </Text>
                               </TouchableOpacity>
                             ))}
@@ -314,7 +355,15 @@ export default function CreateProfileScreen() {
                     />
                   </View>
 
-                  <Button text="Next →" onPress={() => setStep(2)} className="mt-6" />
+                  <View className="mt-6">
+                    <Button
+                      text="Next"
+                      className="text-xl"
+                      rightIcon={<Icon name="arrow-right" />}
+                      onPress={() => setStep(2)}
+                      disabled={loading || !isDirty}
+                    />
+                  </View>
                 </>
               )}
 
@@ -324,6 +373,7 @@ export default function CreateProfileScreen() {
                     Your Location
                   </Text>
 
+                  {/* Country Select */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -337,8 +387,9 @@ export default function CreateProfileScreen() {
                           <SelectTrigger>
                             <Text>
                               {field.value
-                                ? countries.find((c) => c.id.toString() === field.value)?.name ||
-                                  "Select Country"
+                                ? countries.find(
+                                    (c) => c.id.toString() === field.value
+                                  )?.name || "Select Country"
                                 : "Select Country"}
                             </Text>
                           </SelectTrigger>
@@ -356,6 +407,7 @@ export default function CreateProfileScreen() {
                     />
                   </View>
 
+                  {/* County Select - Now using country name */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -365,23 +417,25 @@ export default function CreateProfileScreen() {
                           value={field.value}
                           onValueChange={field.onChange}
                           placeholder={
-                            !watchedCountryId ? "First select country" : "Select County"
+                            !selectedCountryName
+                              ? "First select country"
+                              : "Select County"
                           }
-                          disabled={!watchedCountryId}
+                          disabled={!selectedCountryName}
                         >
                           <SelectTrigger>
                             <Text>
                               {field.value
-                                ? getCountiesByCountry(Number(watchedCountryId)).find(
+                                ? countiesInSelectedCountry.find(
                                     (c) => c.id.toString() === field.value
                                   )?.name || "Select County"
-                                : !watchedCountryId
-                                ? "First select country"
-                                : "Select County"}
+                                : selectedCountryName
+                                  ? "Select County"
+                                  : "First select country"}
                             </Text>
                           </SelectTrigger>
                           <SelectContent>
-                            {getCountiesByCountry(Number(watchedCountryId)).map((county) => (
+                            {countiesInSelectedCountry.map((county) => (
                               <SelectItem
                                 key={county.id}
                                 label={county.name}
@@ -396,7 +450,7 @@ export default function CreateProfileScreen() {
 
                   <View className="flex-row justify-between mt-8 gap-3">
                     <Button
-                      text="← Back"
+                      text="Back"
                       onPress={() => setStep(1)}
                       variant="outline"
                       className="flex-1"

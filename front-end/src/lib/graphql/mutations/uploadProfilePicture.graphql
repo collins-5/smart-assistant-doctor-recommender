@@ -1,0 +1,10 @@
+mutation UploadProfilePicture($file: Upload!) {
+  uploadProfilePicture(file: $file) {
+    success
+    error
+    patient {
+      id
+      profilePictureUrl
+    }
+  }
+}

@@ -1,3 +1,4 @@
+# schema.py (FULL FILE - NOTHING OMITTED)
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -8,11 +9,11 @@ from django.contrib.auth import authenticate
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import uuid
+from graphene_file_upload.scalars import Upload  # ← FOR FILE UPLOAD
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
     PatientDoctorBookmark, Notification, Country, County
 )
-
 
 # ==================== TYPES ====================
 class CountryType(DjangoObjectType):
@@ -20,12 +21,10 @@ class CountryType(DjangoObjectType):
         model = Country
         fields = ("id", "name", "code")
 
-
 class CountyType(DjangoObjectType):
     class Meta:
         model = County
         fields = ("id", "name", "country")
-
 
 class PatientType(DjangoObjectType):
     email = graphene.String()
@@ -48,7 +47,6 @@ class PatientType(DjangoObjectType):
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
 
-
 class UserType(DjangoObjectType):
     patient = graphene.Field(PatientType)
 
@@ -62,7 +60,6 @@ class UserType(DjangoObjectType):
         except AttributeError:
             return None
 
-
 class DoctorType(DjangoObjectType):
     profile_picture_url = graphene.String()
 
@@ -75,18 +72,15 @@ class DoctorType(DjangoObjectType):
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
 
-
 class AppointmentType(DjangoObjectType):
     class Meta:
         model = Appointment
         fields = "__all__"
 
-
 class SpecialtyType(DjangoObjectType):
     class Meta:
         model = Specialty
         fields = "__all__"
-
 
 class NotificationType(graphene.ObjectType):
     id = graphene.Int(required=True)
@@ -95,12 +89,10 @@ class NotificationType(graphene.ObjectType):
     createdAt = graphene.DateTime(required=True)
     isRead = graphene.Boolean(required=True)
 
-
 class BookmarkedDoctorType(DoctorType):
     class Meta:
         model = Doctor
         fields = "__all__"
-
 
 # ==================== INPUTS ====================
 class AppointmentInput(graphene.InputObjectType):
@@ -108,20 +100,16 @@ class AppointmentInput(graphene.InputObjectType):
     start_time = graphene.DateTime(required=True)
     encounter_mode = graphene.String(required=True)
 
-
-# Updated: Now supports all fields (same as edit)
 class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     middle_name = graphene.String()
     date_of_birth = graphene.Date(required=True)
     gender = graphene.String(required=True)
-
     email = graphene.String()
     phone_number = graphene.String()
     country_id = graphene.Int()
     county_id = graphene.Int()
-
 
 class EditProfileInput(graphene.InputObjectType):
     first_name = graphene.String()
@@ -133,7 +121,6 @@ class EditProfileInput(graphene.InputObjectType):
     phone_number = graphene.String()
     country_id = graphene.Int()
     county_id = graphene.Int()
-
 
 # ==================== MUTATIONS ====================
 class SignIn(graphene.Mutation):
@@ -163,7 +150,6 @@ class SignIn(graphene.Mutation):
             raise Exception("Invalid credentials")
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
-
 
 class SignUp(graphene.Mutation):
     class Arguments:
@@ -198,8 +184,6 @@ class SignUp(graphene.Mutation):
         token = get_token(user)
         return SignUp(success=True, error=None, jwt_token=token, user=user)
 
-
-# Updated CreatePatientProfile — now accepts ALL fields in one go
 class CreatePatientProfile(graphene.Mutation):
     class Arguments:
         input = CreatePatientProfileInput(required=True)
@@ -217,7 +201,6 @@ class CreatePatientProfile(graphene.Mutation):
         if hasattr(user, "patient"):
             return CreatePatientProfile(success=False, error="Patient profile already exists")
 
-        # Update User email/phone if provided
         if input.email:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return CreatePatientProfile(success=False, error="Email already in use")
@@ -232,7 +215,6 @@ class CreatePatientProfile(graphene.Mutation):
         user.last_name = input.last_name.strip()
         user.save()
 
-        # Handle Country & County
         country = None
         county = None
         if input.country_id:
@@ -249,7 +231,6 @@ class CreatePatientProfile(graphene.Mutation):
             except County.DoesNotExist:
                 return CreatePatientProfile(success=False, error="Invalid county")
 
-        # Create Patient
         patient = Patient.objects.create(
             user=user,
             first_name=input.first_name.strip(),
@@ -262,7 +243,6 @@ class CreatePatientProfile(graphene.Mutation):
         )
 
         return CreatePatientProfile(success=True, error=None, patient=patient, user=user)
-
 
 class EditProfile(graphene.Mutation):
     class Arguments:
@@ -323,7 +303,6 @@ class EditProfile(graphene.Mutation):
 
         return EditProfile(patient=patient, user=user, success=True)
 
-
 class BookAppointment(graphene.Mutation):
     class Arguments:
         booking_args = AppointmentInput(required=True)
@@ -361,7 +340,6 @@ class BookAppointment(graphene.Mutation):
         )
         return BookAppointment(appointment=appt)
 
-
 class BookmarkDoctor(graphene.Mutation):
     class Arguments:
         doctor_id = graphene.Int(required=True)
@@ -378,7 +356,6 @@ class BookmarkDoctor(graphene.Mutation):
         doctor = Doctor.objects.get(pk=doctor_id)
         PatientDoctorBookmark.objects.get_or_create(patient=user.patient, doctor=doctor)
         return BookmarkDoctor(success=True, doctor=doctor)
-
 
 class UnbookmarkDoctor(graphene.Mutation):
     class Arguments:
@@ -399,6 +376,54 @@ class UnbookmarkDoctor(graphene.Mutation):
         except PatientDoctorBookmark.DoesNotExist:
             return UnbookmarkDoctor(success=False)
 
+# ==================== NEW: PROFILE PICTURE MUTATIONS ====================
+class UploadProfilePicture(graphene.Mutation):
+    class Arguments:
+        file = Upload(required=True)
+
+    success = graphene.Boolean()
+    error = graphene.String()
+    patient = graphene.Field(PatientType)
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, file):
+        user = info.context.user
+
+        try:
+            patient = user.patient
+        except AttributeError:
+            return UploadProfilePicture(success=False, error="Patient profile does not exist. Create profile first.")
+
+        if not file:
+            return UploadProfilePicture(success=False, error="No file provided")
+
+        patient.profile_picture = file
+        patient.save()
+
+        return UploadProfilePicture(success=True, error=None, patient=patient)
+
+
+class RemoveProfilePicture(graphene.Mutation):
+    success = graphene.Boolean()
+    error = graphene.String()
+    patient = graphene.Field(PatientType)
+
+    @staticmethod
+    @login_required
+    def mutate(root, info):
+        user = info.context.user
+        try:
+            patient = user.patient
+        except AttributeError:
+            return RemoveProfilePicture(success=False, error="Patient profile not found")
+
+        if patient.profile_picture:
+            patient.profile_picture.delete(save=False)
+            patient.profile_picture = None
+            patient.save()
+
+        return RemoveProfilePicture(success=True, error=None, patient=patient)
 
 # ==================== QUERY ====================
 class Query(graphene.ObjectType):
@@ -449,7 +474,6 @@ class Query(graphene.ObjectType):
             return County.objects.filter(country_id=country_id)
         return County.objects.all()
 
-
 # ==================== MUTATION ROOT ====================
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
@@ -464,6 +488,9 @@ class Mutation(graphene.ObjectType):
     bookmark_doctor = BookmarkDoctor.Field()
     unbookmark_doctor = UnbookmarkDoctor.Field()
 
+    # NEW: PROFILE PICTURE
+    upload_profile_picture = UploadProfilePicture.Field()
+    remove_profile_picture = RemoveProfilePicture.Field()
 
 # ==================== SUBSCRIPTION ====================
 class Subscription(graphene.ObjectType):
@@ -477,7 +504,6 @@ class Subscription(graphene.ObjectType):
         if not user.is_authenticated or not hasattr(user, "patient") or user.patient.id != patient_id:
             raise Exception("Unauthorized")
         return [f"notifications_{patient_id}"]
-
 
 # ==================== FINAL SCHEMA ====================
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

@@ -1,0 +1,9 @@
+mutation BookmarkDoctor($doctorId: Int!) {
+  bookmarkDoctor(doctorId: $doctorId) {
+    success
+    doctor {
+      id
+      fullName
+    }
+  }
+}
