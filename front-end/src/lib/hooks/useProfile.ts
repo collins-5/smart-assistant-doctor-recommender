@@ -2,14 +2,15 @@
 import { useEffect } from 'react';
 import { useProfileQuery } from '~/lib/graphql/generated/graphql';
 import { useSessionStore } from '~/lib/store/auth';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export const useProfile = () => {
     const jwt = useSessionStore((s) => s.session?.jwt);
-
-    console.log('useProfile: Sending JWT with query →', !!jwt);
+    const { refetch: refetchTrigger } = useLocalSearchParams(); // ← Detects our trigger
+    const router = useRouter();
 
     const { data, loading, error, refetch } = useProfileQuery({
-        fetchPolicy: 'cache-first',
+        fetchPolicy: 'cache-and-network', // ← Critical: always check server
         skip: !jwt,
         context: {
             headers: {
@@ -17,6 +18,20 @@ export const useProfile = () => {
             },
         },
     });
+
+    // THIS IS THE KEY: Force refetch when we navigate with ?refetch=...
+    useEffect(() => {
+        if (refetchTrigger) {
+            console.log('useProfile: Refetch triggered by navigation param');
+            refetch(); // Pull fresh data from server
+
+            // Clean URL after 1 second (optional, keeps URL clean)
+            const timer = setTimeout(() => {
+                router.setParams({ refetch: undefined });
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [refetchTrigger, refetch, router]);
 
     useEffect(() => {
         if (data) {
@@ -27,12 +42,15 @@ export const useProfile = () => {
         }
     }, [data, error]);
 
-    // Loading or no token
-    if (loading || !jwt) {
+    // Early returns
+    if (!jwt) {
         return { profile: null, loading: true, refetch, error: null };
     }
 
-    // Error or no data
+    if (loading && !data) {
+        return { profile: null, loading: true, refetch, error: null };
+    }
+
     if (error || !data?.me) {
         return { profile: null, loading: false, refetch, error };
     }
@@ -47,8 +65,7 @@ export const useProfile = () => {
         firstName: patient?.firstName || user.firstName || '',
         lastName: patient?.lastName || user.lastName || '',
         middleName: patient?.middleName || null,
-        fullName: `${patient?.firstName || user.firstName || ''} ${patient?.lastName || user.lastName || ''
-            }`.trim(),
+        fullName: `${patient?.firstName || user.firstName || ''} ${patient?.lastName || user.lastName || ''}`.trim(),
 
         profilePictureUrl: patient?.profilePictureUrl || null,
         patientId: patient?.id ? Number(patient.id) : null,
@@ -56,7 +73,6 @@ export const useProfile = () => {
         gender: patient?.gender || null,
         dateOfBirth: patient?.dateOfBirth || null,
 
-        // Newly added: country & county with id + name
         countryId: patient?.country?.id ? Number(patient.country.id) : null,
         countryName: patient?.country?.name || null,
 

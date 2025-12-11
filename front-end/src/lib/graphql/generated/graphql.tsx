@@ -19,6 +19,7 @@ export type Scalars = {
   DateTime: { input: any; output: any; }
   Decimal: { input: any; output: any; }
   GenericScalar: { input: any; output: any; }
+  Upload: { input: any; output: any; }
 };
 
 export type AppointmentInput = {
@@ -100,14 +101,19 @@ export type CreatePatientProfile = {
   error?: Maybe<Scalars['String']['output']>;
   patient?: Maybe<PatientType>;
   success?: Maybe<Scalars['Boolean']['output']>;
+  user?: Maybe<UserType>;
 };
 
 export type CreatePatientProfileInput = {
+  countryId?: InputMaybe<Scalars['Int']['input']>;
+  countyId?: InputMaybe<Scalars['Int']['input']>;
   dateOfBirth: Scalars['Date']['input'];
+  email?: InputMaybe<Scalars['String']['input']>;
   firstName: Scalars['String']['input'];
   gender: Scalars['String']['input'];
   lastName: Scalars['String']['input'];
   middleName?: InputMaybe<Scalars['String']['input']>;
+  phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type DoctorType = {
@@ -157,11 +163,13 @@ export type Mutation = {
   createPatientProfile?: Maybe<CreatePatientProfile>;
   editProfile?: Maybe<EditProfile>;
   refreshToken?: Maybe<Refresh>;
+  removeProfilePicture?: Maybe<RemoveProfilePicture>;
   signIn?: Maybe<SignIn>;
   signUp?: Maybe<SignUp>;
   /** Obtain JSON Web Token mutation */
   tokenAuth?: Maybe<ObtainJsonWebToken>;
   unbookmarkDoctor?: Maybe<UnbookmarkDoctor>;
+  uploadProfilePicture?: Maybe<UploadProfilePicture>;
   verifyToken?: Maybe<Verify>;
 };
 
@@ -213,6 +221,11 @@ export type MutationTokenAuthArgs = {
 
 export type MutationUnbookmarkDoctorArgs = {
   doctorId: Scalars['Int']['input'];
+};
+
+
+export type MutationUploadProfilePictureArgs = {
+  file: Scalars['Upload']['input'];
 };
 
 
@@ -280,6 +293,13 @@ export type Refresh = {
   token: Scalars['String']['output'];
 };
 
+export type RemoveProfilePicture = {
+  __typename?: 'RemoveProfilePicture';
+  error?: Maybe<Scalars['String']['output']>;
+  patient?: Maybe<PatientType>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type SignIn = {
   __typename?: 'SignIn';
   jwtToken?: Maybe<Scalars['String']['output']>;
@@ -317,6 +337,13 @@ export type UnbookmarkDoctor = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type UploadProfilePicture = {
+  __typename?: 'UploadProfilePicture';
+  error?: Maybe<Scalars['String']['output']>;
+  patient?: Maybe<PatientType>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type UserType = {
   __typename?: 'UserType';
   email?: Maybe<Scalars['String']['output']>;
@@ -336,12 +363,24 @@ export type Verify = {
   payload: Scalars['GenericScalar']['output'];
 };
 
+export type CreatePatientProfileMutationVariables = Exact<{
+  input: CreatePatientProfileInput;
+}>;
+
+
+export type CreatePatientProfileMutation = { __typename?: 'Mutation', createPatientProfile?: { __typename?: 'CreatePatientProfile', success?: boolean | null, error?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string } | null, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, profilePictureUrl?: string | null, country?: { __typename?: 'CountryType', id: string, name: string } | null, county?: { __typename?: 'CountyType', id: string, name: string } | null } | null } | null };
+
 export type EditProfileMutationVariables = Exact<{
   input: EditProfileInput;
 }>;
 
 
 export type EditProfileMutation = { __typename?: 'Mutation', editProfile?: { __typename?: 'EditProfile', success?: boolean | null, error?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string } | null, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, profilePictureUrl?: string | null, country?: { __typename?: 'CountryType', id: string, name: string } | null, county?: { __typename?: 'CountyType', id: string, name: string } | null } | null } | null };
+
+export type RemoveProfilePictureMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RemoveProfilePictureMutation = { __typename?: 'Mutation', removeProfilePicture?: { __typename?: 'RemoveProfilePicture', success?: boolean | null, error?: string | null, patient?: { __typename?: 'PatientType', id: string, profilePictureUrl?: string | null } | null } | null };
 
 export type SignInMutationVariables = Exact<{
   emailOrPhoneNumber: Scalars['String']['input'];
@@ -361,12 +400,26 @@ export type SignUpMutationVariables = Exact<{
 
 export type SignUpMutation = { __typename?: 'Mutation', signUp?: { __typename?: 'SignUp', success?: boolean | null, error?: string | null, jwtToken?: string | null, user?: { __typename?: 'UserType', id: string, username: string, email?: string | null, phoneNumber?: string | null } | null } | null };
 
+export type UploadProfilePictureMutationVariables = Exact<{
+  file: Scalars['Upload']['input'];
+}>;
+
+
+export type UploadProfilePictureMutation = { __typename?: 'Mutation', uploadProfilePicture?: { __typename?: 'UploadProfilePicture', success?: boolean | null, error?: string | null, patient?: { __typename?: 'PatientType', id: string, profilePictureUrl?: string | null } | null } | null };
+
 export type VerifyTokenMutationVariables = Exact<{
   token: Scalars['String']['input'];
 }>;
 
 
 export type VerifyTokenMutation = { __typename?: 'Mutation', verifyToken?: { __typename?: 'Verify', payload: any } | null };
+
+export type BookmarkDoctorMutationVariables = Exact<{
+  doctorId: Scalars['Int']['input'];
+}>;
+
+
+export type BookmarkDoctorMutation = { __typename?: 'Mutation', bookmarkDoctor?: { __typename?: 'BookmarkDoctor', success?: boolean | null, doctor?: { __typename?: 'DoctorType', id: string, fullName: string } | null } | null };
 
 export type GetBookmarkedDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -393,6 +446,13 @@ export type GetSpecialtiesQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetSpecialtiesQuery = { __typename?: 'Query', specialties?: Array<{ __typename?: 'SpecialtyType', id: string, name: string } | null> | null };
 
+export type UnbookmarkDoctorMutationVariables = Exact<{
+  doctorId: Scalars['Int']['input'];
+}>;
+
+
+export type UnbookmarkDoctorMutation = { __typename?: 'Mutation', unbookmarkDoctor?: { __typename?: 'UnbookmarkDoctor', success?: boolean | null } | null };
+
 export type OnNewNotificationSubscriptionVariables = Exact<{
   patientId: Scalars['Int']['input'];
 }>;
@@ -401,6 +461,64 @@ export type OnNewNotificationSubscriptionVariables = Exact<{
 export type OnNewNotificationSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
 
 
+export const CreatePatientProfileDocument = gql`
+    mutation CreatePatientProfile($input: CreatePatientProfileInput!) {
+  createPatientProfile(input: $input) {
+    success
+    error
+    user {
+      id
+      email
+      phoneNumber
+      firstName
+      lastName
+    }
+    patient {
+      id
+      firstName
+      lastName
+      middleName
+      dateOfBirth
+      gender
+      country {
+        id
+        name
+      }
+      county {
+        id
+        name
+      }
+      profilePictureUrl
+    }
+  }
+}
+    `;
+export type CreatePatientProfileMutationFn = Apollo.MutationFunction<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>;
+
+/**
+ * __useCreatePatientProfileMutation__
+ *
+ * To run a mutation, you first call `useCreatePatientProfileMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCreatePatientProfileMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [createPatientProfileMutation, { data, loading, error }] = useCreatePatientProfileMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useCreatePatientProfileMutation(baseOptions?: Apollo.MutationHookOptions<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>(CreatePatientProfileDocument, options);
+      }
+export type CreatePatientProfileMutationHookResult = ReturnType<typeof useCreatePatientProfileMutation>;
+export type CreatePatientProfileMutationResult = Apollo.MutationResult<CreatePatientProfileMutation>;
+export type CreatePatientProfileMutationOptions = Apollo.BaseMutationOptions<CreatePatientProfileMutation, CreatePatientProfileMutationVariables>;
 export const EditProfileDocument = gql`
     mutation EditProfile($input: EditProfileInput!) {
   editProfile(input: $input) {
@@ -459,6 +577,43 @@ export function useEditProfileMutation(baseOptions?: Apollo.MutationHookOptions<
 export type EditProfileMutationHookResult = ReturnType<typeof useEditProfileMutation>;
 export type EditProfileMutationResult = Apollo.MutationResult<EditProfileMutation>;
 export type EditProfileMutationOptions = Apollo.BaseMutationOptions<EditProfileMutation, EditProfileMutationVariables>;
+export const RemoveProfilePictureDocument = gql`
+    mutation RemoveProfilePicture {
+  removeProfilePicture {
+    success
+    error
+    patient {
+      id
+      profilePictureUrl
+    }
+  }
+}
+    `;
+export type RemoveProfilePictureMutationFn = Apollo.MutationFunction<RemoveProfilePictureMutation, RemoveProfilePictureMutationVariables>;
+
+/**
+ * __useRemoveProfilePictureMutation__
+ *
+ * To run a mutation, you first call `useRemoveProfilePictureMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRemoveProfilePictureMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [removeProfilePictureMutation, { data, loading, error }] = useRemoveProfilePictureMutation({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useRemoveProfilePictureMutation(baseOptions?: Apollo.MutationHookOptions<RemoveProfilePictureMutation, RemoveProfilePictureMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RemoveProfilePictureMutation, RemoveProfilePictureMutationVariables>(RemoveProfilePictureDocument, options);
+      }
+export type RemoveProfilePictureMutationHookResult = ReturnType<typeof useRemoveProfilePictureMutation>;
+export type RemoveProfilePictureMutationResult = Apollo.MutationResult<RemoveProfilePictureMutation>;
+export type RemoveProfilePictureMutationOptions = Apollo.BaseMutationOptions<RemoveProfilePictureMutation, RemoveProfilePictureMutationVariables>;
 export const SignInDocument = gql`
     mutation SignIn($emailOrPhoneNumber: String!, $password: String!) {
   signIn(emailOrPhoneNumber: $emailOrPhoneNumber, password: $password) {
@@ -558,6 +713,44 @@ export function useSignUpMutation(baseOptions?: Apollo.MutationHookOptions<SignU
 export type SignUpMutationHookResult = ReturnType<typeof useSignUpMutation>;
 export type SignUpMutationResult = Apollo.MutationResult<SignUpMutation>;
 export type SignUpMutationOptions = Apollo.BaseMutationOptions<SignUpMutation, SignUpMutationVariables>;
+export const UploadProfilePictureDocument = gql`
+    mutation UploadProfilePicture($file: Upload!) {
+  uploadProfilePicture(file: $file) {
+    success
+    error
+    patient {
+      id
+      profilePictureUrl
+    }
+  }
+}
+    `;
+export type UploadProfilePictureMutationFn = Apollo.MutationFunction<UploadProfilePictureMutation, UploadProfilePictureMutationVariables>;
+
+/**
+ * __useUploadProfilePictureMutation__
+ *
+ * To run a mutation, you first call `useUploadProfilePictureMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUploadProfilePictureMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [uploadProfilePictureMutation, { data, loading, error }] = useUploadProfilePictureMutation({
+ *   variables: {
+ *      file: // value for 'file'
+ *   },
+ * });
+ */
+export function useUploadProfilePictureMutation(baseOptions?: Apollo.MutationHookOptions<UploadProfilePictureMutation, UploadProfilePictureMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UploadProfilePictureMutation, UploadProfilePictureMutationVariables>(UploadProfilePictureDocument, options);
+      }
+export type UploadProfilePictureMutationHookResult = ReturnType<typeof useUploadProfilePictureMutation>;
+export type UploadProfilePictureMutationResult = Apollo.MutationResult<UploadProfilePictureMutation>;
+export type UploadProfilePictureMutationOptions = Apollo.BaseMutationOptions<UploadProfilePictureMutation, UploadProfilePictureMutationVariables>;
 export const VerifyTokenDocument = gql`
     mutation VerifyToken($token: String!) {
   verifyToken(token: $token) {
@@ -591,6 +784,43 @@ export function useVerifyTokenMutation(baseOptions?: Apollo.MutationHookOptions<
 export type VerifyTokenMutationHookResult = ReturnType<typeof useVerifyTokenMutation>;
 export type VerifyTokenMutationResult = Apollo.MutationResult<VerifyTokenMutation>;
 export type VerifyTokenMutationOptions = Apollo.BaseMutationOptions<VerifyTokenMutation, VerifyTokenMutationVariables>;
+export const BookmarkDoctorDocument = gql`
+    mutation BookmarkDoctor($doctorId: Int!) {
+  bookmarkDoctor(doctorId: $doctorId) {
+    success
+    doctor {
+      id
+      fullName
+    }
+  }
+}
+    `;
+export type BookmarkDoctorMutationFn = Apollo.MutationFunction<BookmarkDoctorMutation, BookmarkDoctorMutationVariables>;
+
+/**
+ * __useBookmarkDoctorMutation__
+ *
+ * To run a mutation, you first call `useBookmarkDoctorMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useBookmarkDoctorMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [bookmarkDoctorMutation, { data, loading, error }] = useBookmarkDoctorMutation({
+ *   variables: {
+ *      doctorId: // value for 'doctorId'
+ *   },
+ * });
+ */
+export function useBookmarkDoctorMutation(baseOptions?: Apollo.MutationHookOptions<BookmarkDoctorMutation, BookmarkDoctorMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<BookmarkDoctorMutation, BookmarkDoctorMutationVariables>(BookmarkDoctorDocument, options);
+      }
+export type BookmarkDoctorMutationHookResult = ReturnType<typeof useBookmarkDoctorMutation>;
+export type BookmarkDoctorMutationResult = Apollo.MutationResult<BookmarkDoctorMutation>;
+export type BookmarkDoctorMutationOptions = Apollo.BaseMutationOptions<BookmarkDoctorMutation, BookmarkDoctorMutationVariables>;
 export const GetBookmarkedDoctorsDocument = gql`
     query GetBookmarkedDoctors {
   bookmarkedDoctors {
@@ -854,6 +1084,39 @@ export type GetSpecialtiesQueryHookResult = ReturnType<typeof useGetSpecialtiesQ
 export type GetSpecialtiesLazyQueryHookResult = ReturnType<typeof useGetSpecialtiesLazyQuery>;
 export type GetSpecialtiesSuspenseQueryHookResult = ReturnType<typeof useGetSpecialtiesSuspenseQuery>;
 export type GetSpecialtiesQueryResult = Apollo.QueryResult<GetSpecialtiesQuery, GetSpecialtiesQueryVariables>;
+export const UnbookmarkDoctorDocument = gql`
+    mutation UnbookmarkDoctor($doctorId: Int!) {
+  unbookmarkDoctor(doctorId: $doctorId) {
+    success
+  }
+}
+    `;
+export type UnbookmarkDoctorMutationFn = Apollo.MutationFunction<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>;
+
+/**
+ * __useUnbookmarkDoctorMutation__
+ *
+ * To run a mutation, you first call `useUnbookmarkDoctorMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUnbookmarkDoctorMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [unbookmarkDoctorMutation, { data, loading, error }] = useUnbookmarkDoctorMutation({
+ *   variables: {
+ *      doctorId: // value for 'doctorId'
+ *   },
+ * });
+ */
+export function useUnbookmarkDoctorMutation(baseOptions?: Apollo.MutationHookOptions<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>(UnbookmarkDoctorDocument, options);
+      }
+export type UnbookmarkDoctorMutationHookResult = ReturnType<typeof useUnbookmarkDoctorMutation>;
+export type UnbookmarkDoctorMutationResult = Apollo.MutationResult<UnbookmarkDoctorMutation>;
+export type UnbookmarkDoctorMutationOptions = Apollo.BaseMutationOptions<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>;
 export const OnNewNotificationDocument = gql`
     subscription OnNewNotification($patientId: Int!) {
   retrieveNewNotifications(patientId: $patientId) {

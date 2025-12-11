@@ -1,7 +1,6 @@
-// app/(protected)/profile.tsx
+// app/(protected)/(tabs)/profile.tsx
 import { View, Text, Image, TouchableOpacity, ScrollView } from "react-native";
 import { useProfile } from "~/lib/hooks/useProfile";
-import { HandleLogout } from "~/lib/store/auth";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SheetManager } from "react-native-actions-sheet";
@@ -27,9 +26,12 @@ export default function ProfileScreen() {
     );
   }
 
+  // This is the correct way — your hook returns patientId: number | null
+  const hasPatientProfile = profile.patientId !== null;
+
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      {/* Header with Avatar */}
+      {/* Header */}
       <View className="bg-blue-600 pt-16 pb-8 items-center">
         {profile.profilePictureUrl ? (
           <Image
@@ -40,25 +42,23 @@ export default function ProfileScreen() {
         ) : (
           <View className="w-32 h-32 rounded-full bg-blue-500 border-4 border-white justify-center items-center">
             <Text className="text-white text-5xl font-bold">
-              {profile.firstName[0]?.toUpperCase()}
+              {profile.firstName[0]?.toUpperCase() || "U"}
+              {profile.lastName[0]?.toUpperCase()}
             </Text>
           </View>
         )}
-
         <Text className="text-white text-2xl font-bold mt-4">
           {profile.fullName || "User"}
         </Text>
         <Text className="text-blue-100 text-lg mt-1">{profile.email}</Text>
       </View>
 
-      {/* Profile Info Cards */}
+      {/* Profile Info */}
       <View className="px-6 py-6 space-y-4">
-        {/* Personal Info */}
         <View className="bg-white rounded-2xl p-5 shadow-sm">
           <Text className="text-gray-500 text-sm font-medium mb-3">
             Personal Information
           </Text>
-
           <View className="space-y-3">
             {profile.fullName && (
               <InfoRow
@@ -100,8 +100,6 @@ export default function ProfileScreen() {
                 }
               />
             )}
-
-            {/* Country */}
             {profile.countryName && (
               <InfoRow
                 icon="earth-outline"
@@ -109,8 +107,6 @@ export default function ProfileScreen() {
                 value={profile.countryName}
               />
             )}
-
-            {/* County */}
             {profile.countyName && (
               <InfoRow
                 icon="location-outline"
@@ -127,26 +123,32 @@ export default function ProfileScreen() {
             Account
           </Text>
 
+          {/* Dynamic Button */}
           <TouchableOpacity
-            onPress={() => router.push("/(protected)/(profiles)/edit-profile")}
+            onPress={() => {
+              router.push(
+                hasPatientProfile
+                  ? "/(protected)/(profiles)/edit-profile"
+                  : "/(protected)/(profiles)/create-profile"
+              );
+            }}
             className="flex-row items-center py-4 border-b border-gray-200"
           >
-            <Ionicons name="create-outline" size={24} color="#007AFF" />
+            <Ionicons
+              name={hasPatientProfile ? "create-outline" : "person-add-outline"}
+              size={24}
+              color="#007AFF"
+            />
             <Text className="ml-4 text-base text-foreground flex-1">
-              Edit Profile
+              {hasPatientProfile ? "Edit Profile" : "Complete Your Profile"}
             </Text>
             <Ionicons name="chevron-forward" size={20} color="#999999" />
           </TouchableOpacity>
 
+          {/* Logout */}
           <TouchableOpacity
             onPress={() => {
-             SheetManager.show("logout-confirmation", {
-               payload: {
-                 onConfirm: () => {
-                   console.log("Logged out successfully!");
-                 },
-               },
-             });
+              SheetManager.show("logout-confirmation");
             }}
             className="flex-row items-center py-4"
           >
@@ -167,7 +169,7 @@ export default function ProfileScreen() {
   );
 }
 
-// Helper component for consistent rows
+// Reusable row
 const InfoRow = ({
   icon,
   label,

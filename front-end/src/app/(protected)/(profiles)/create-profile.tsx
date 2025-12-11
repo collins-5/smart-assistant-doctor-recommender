@@ -1,4 +1,4 @@
-// front-end/src/app/(protected)/(profiles)/edit-profile.tsx
+// front-end/src/app/(protected)/(profiles)/create-profile.tsx
 import {
   View,
   Text,
@@ -11,10 +11,9 @@ import { useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
-
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -25,13 +24,11 @@ import {
   SelectContent,
   SelectItem,
 } from "~/components/ui/select";
-
-import { useEditProfile } from "~/lib/hooks/useEditProfile";
-import { useProfile } from "~/lib/hooks/useProfile";
+import { useCreateProfile } from "~/lib/hooks/useCreateProfile";
 import { useCountries } from "~/lib/hooks/useCountries";
 import Icon from "~/components/ui/icon";
 
-const editProfileSchema = z.object({
+const createProfileSchema = z.object({
   firstName: z.string().min(1, "First name required"),
   lastName: z.string().min(1, "Last name required"),
   middleName: z.string().optional(),
@@ -43,41 +40,28 @@ const editProfileSchema = z.object({
   countyId: z.string().nullable(),
 });
 
-type FormData = z.infer<typeof editProfileSchema>;
+type FormData = z.infer<typeof createProfileSchema>;
 
-type ProfileWithLocation = ReturnType<typeof useProfile>["profile"] & {
-  middleName?: string | null;
-  countryId?: number | null;
-  countyId?: number | null;
-};
-
-export default function EditProfileScreen() {
+export default function CreateProfileScreen() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
-
-  const { submit, loading } = useEditProfile();
-  const { profile: rawProfile, loading: profileLoading } = useProfile();
+  const { submit, loading } = useCreateProfile();
   const {
     countries,
-    getCountiesByCountryName, // ← Now using name-based version
+    getCountiesByCountryName, // ← Now using name-based function
     loading: locationsLoading,
   } = useCountries();
-
-  const profile = rawProfile as ProfileWithLocation | null;
-
-  const hasReset = useRef(false);
 
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     setValue,
     formState: { errors, isDirty },
   } = useForm<FormData>({
-    resolver: zodResolver(editProfileSchema),
+    resolver: zodResolver(createProfileSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -91,12 +75,12 @@ export default function EditProfileScreen() {
     },
   });
 
-  // Watch countryId from form
+  // Watch countryId (string like "233")
   const watchedCountryId = watch("countryId");
 
   // Derive country name from selected countryId
   const selectedCountryName = watchedCountryId
-    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name || null
+    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name
     : null;
 
   // Get counties using country name
@@ -108,30 +92,6 @@ export default function EditProfileScreen() {
   useEffect(() => {
     setValue("countyId", null);
   }, [watchedCountryId, setValue]);
-
-  // Populate form with existing profile data
-  useEffect(() => {
-    if (profile && !hasReset.current) {
-      const dob = profile.dateOfBirth
-        ? new Date(profile.dateOfBirth)
-        : new Date();
-      setDate(dob);
-
-      reset({
-        firstName: profile.firstName || "",
-        lastName: profile.lastName || "",
-        middleName: profile.middleName || "",
-        email: profile.email || "",
-        phoneNumber: profile.phoneNumber || "",
-        dateOfBirth: profile.dateOfBirth || "",
-        gender: (profile.gender as "M" | "F" | "O") || "O",
-        countryId: profile.countryId?.toString() || null,
-        countyId: profile.countyId?.toString() || null,
-      });
-
-      hasReset.current = true;
-    }
-  }, [profile, reset]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -146,11 +106,19 @@ export default function EditProfileScreen() {
         countryId: data.countryId || undefined,
         countyId: data.countyId || undefined,
       });
-
-      // Optional: trigger refetch on profile tab when going back
-      router.back();
+     Alert.alert("Success", "Profile created successfully!", [
+       {
+         text: "OK",
+         onPress: () => {
+           router.replace({
+             pathname: "/(tabs)/profile",
+             params: { refetch: Date.now().toString() }, // Triggers refetch
+           });
+         },
+       },
+     ]);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to update profile");
+      Alert.alert("Error", e.message || "Failed to create profile");
     }
   };
 
@@ -163,10 +131,10 @@ export default function EditProfileScreen() {
     });
   };
 
-  if (profileLoading || locationsLoading) {
+  if (locationsLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <Text className="text-foreground">Loading locations...</Text>
       </View>
     );
   }
@@ -197,13 +165,13 @@ export default function EditProfileScreen() {
       <ScrollView className="flex-1 bg-background">
         <View className="flex-row bg-primary p-4">
           <Button
-            onPress={() => (step === 1 ? router.back() : setStep(1))}
+            onPress={() => router.back()}
             className="w-12"
             rightIcon={<Icon name="arrow-left" size={32} />}
           />
           <View className="flex justify-center items-center flex-1">
             <Text className="text-primary-foreground text-3xl font-extrabold">
-              Edit Profile
+              Create Profile
             </Text>
           </View>
           <View className="w-12" />
@@ -213,15 +181,14 @@ export default function EditProfileScreen() {
           <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle className="text-2xl text-center">
-                Edit Profile
+                Complete Your Profile
               </CardTitle>
               <StepIndicator />
             </CardHeader>
-
             <CardContent className="space-y-4">
               {step === 1 && (
                 <>
-                  {/* Step 1: Personal Info (unchanged) */}
+                  {/* Step 1 fields unchanged */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -323,10 +290,18 @@ export default function EditProfileScreen() {
                               <TouchableOpacity
                                 key={g}
                                 onPress={() => field.onChange(g)}
-                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${field.value === g ? "bg-primary border-primary" : "border-muted"}`}
+                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${
+                                  field.value === g
+                                    ? "bg-primary border-primary"
+                                    : "border-muted"
+                                }`}
                               >
                                 <Text
-                                  className={`text-center font-medium ${field.value === g ? "text-white" : "text-foreground"}`}
+                                  className={`text-center font-medium ${
+                                    field.value === g
+                                      ? "text-white"
+                                      : "text-foreground"
+                                  }`}
                                 >
                                   {g === "M"
                                     ? "Male"
@@ -386,12 +361,12 @@ export default function EditProfileScreen() {
                       className="text-xl"
                       rightIcon={<Icon name="arrow-right" />}
                       onPress={() => setStep(2)}
+                      disabled={loading || !isDirty}
                     />
                   </View>
                 </>
               )}
 
-              {/* Step 2: Location – Now using country name */}
               {step === 2 && (
                 <>
                   <Text className="text-lg font-medium text-foreground mb-4">
@@ -432,7 +407,7 @@ export default function EditProfileScreen() {
                     />
                   </View>
 
-                  {/* County Select – Using country name */}
+                  {/* County Select - Now using country name */}
                   <View className="my-2">
                     <Controller
                       control={control}
@@ -478,13 +453,13 @@ export default function EditProfileScreen() {
                       text="Back"
                       onPress={() => setStep(1)}
                       variant="outline"
-                      className="flex-1 text-center"
+                      className="flex-1"
                     />
                     <Button
-                      text={loading ? "Saving..." : "Save Changes"}
+                      text={loading ? "Creating..." : "Create Profile"}
                       onPress={handleSubmit(onSubmit)}
                       disabled={loading || !isDirty}
-                      className="flex-1 text-center"
+                      className="flex-1"
                     />
                   </View>
                 </>
