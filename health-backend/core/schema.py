@@ -295,7 +295,7 @@ class EditProfile(graphene.Mutation):
         if input.county_id is not None:
             try:
                 patient.county = County.objects.get(id=input.county_id)
-            except County.DoesNotExist:
+            except Country.DoesNotExist:
                 return EditProfile(success=False, error="Invalid county")
 
         patient.save()
@@ -313,18 +313,31 @@ class BookAppointment(graphene.Mutation):
     @login_required
     def mutate(root, info, booking_args):
         user = info.context.user
+
         if not hasattr(user, "patient"):
             raise Exception("Patient profile required")
+
         patient = user.patient
+
+        try:
+            doctor = Doctor.objects.get(pk=booking_args.doctor_id)
+        except Doctor.DoesNotExist:
+            raise Exception("Doctor not found")
+
+        from decimal import Decimal
+        appointment_cost = Decimal('2500.00')
+
         appt = Appointment.objects.create(
             patient=patient,
-            doctor_id=booking_args.doctor_id,
+            doctor=doctor,
             start_time=booking_args.start_time,
             end_time=booking_args.start_time + timedelta(minutes=30),
             encounter_mode=booking_args.encounter_mode,
-            cost=2500,
+            cost=appointment_cost,
+            payment_completed=False,
             rastuc_id=str(uuid.uuid4())
         )
+
         async_to_sync(get_channel_layer().group_send)(
             f"notifications_{patient.id}",
             {
@@ -338,6 +351,7 @@ class BookAppointment(graphene.Mutation):
                 }
             }
         )
+
         return BookAppointment(appointment=appt)
 
 class BookmarkDoctor(graphene.Mutation):
@@ -474,6 +488,22 @@ class Query(graphene.ObjectType):
             return County.objects.filter(country_id=country_id)
         return County.objects.all()
 
+# ==================== SUBSCRIPTION ====================
+class Subscription(graphene.ObjectType):
+    retrieve_new_notifications = graphene.Field(
+        NotificationType,
+        patient_id=graphene.Int(required=True),
+        jwt_token=graphene.String(required=True),  # ← NEW: JWT passed as argument
+    )
+
+    @staticmethod
+    @login_required
+    async def subscribe_retrieve_new_notifications(root, info, patient_id, jwt_token):
+        user = info.context.user
+        if not hasattr(user, "patient") or user.patient.id != patient_id:
+            raise Exception("Unauthorized")
+        return [f"notifications_{patient_id}"]
+
 # ==================== MUTATION ROOT ====================
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
@@ -491,19 +521,6 @@ class Mutation(graphene.ObjectType):
     # NEW: PROFILE PICTURE
     upload_profile_picture = UploadProfilePicture.Field()
     remove_profile_picture = RemoveProfilePicture.Field()
-
-# ==================== SUBSCRIPTION ====================
-class Subscription(graphene.ObjectType):
-    retrieve_new_notifications = graphene.Field(
-        NotificationType,
-        patient_id=graphene.Int(required=True)
-    )
-
-    async def subscribe_retrieve_new_notifications(root, info, patient_id):
-        user = info.context.user
-        if not user.is_authenticated or not hasattr(user, "patient") or user.patient.id != patient_id:
-            raise Exception("Unauthorized")
-        return [f"notifications_{patient_id}"]
 
 # ==================== FINAL SCHEMA ====================
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

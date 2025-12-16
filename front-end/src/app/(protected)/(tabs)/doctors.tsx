@@ -3,22 +3,27 @@ import { View, Text, FlatList } from "react-native";
 import { useDoctors } from "~/lib/hooks/useDoctors";
 import type { GetDoctorsQuery } from "~/lib/graphql/generated/graphql";
 import { DoctorCard } from "~/components/core/doctor-card";
+import { SheetManager } from "react-native-actions-sheet";
+import { useRouter } from "expo-router"; // or your navigation method
 
 export default function DoctorsScreen() {
-  const { doctors, loading, error, refetch } = useDoctors();
-
+  const { doctors, loading, refetch } = useDoctors();
   const doctorList = doctors ?? [];
-
-  console.log(error);
-
-  if (!loading && error)
-    return (
-      <Text className="text-red-500 text-center mt-10">
-        Error: {error?.message}
-      </Text>
-    );
+  const router = useRouter(); // adjust if using different navigation
 
   type Doctor = NonNullable<GetDoctorsQuery["doctors"]>[number];
+
+  const openBookingSheet = (doctor: Doctor) => {
+    SheetManager.show("booking", {
+      payload: { doctor },
+    });
+  };
+
+  const goToDoctorProfile = (doctorId: number) => {
+    // Change this to match your navigation setup
+    router.push(`/doctor/${doctorId}`);
+    // or: navigation.navigate("DoctorProfile", { id: doctorId })
+  };
 
   const renderDoctor = ({ item }: { item: Doctor }) => {
     if (!item) return null;
@@ -36,32 +41,39 @@ export default function DoctorsScreen() {
         teleconsultPrice={item.teleconsultPrice}
         clinicVisitPrice={item.clinicVisitPrice}
         homecarePrice={item.homecarePrice}
-        onPress={() => {
-          // Navigate to doctor details or booking screen
-          console.log("Doctor pressed:", item.id);
+        primaryAction={{
+          text: "Book Appointment",
+          onPress: () => openBookingSheet(item),
+        }}
+        secondaryAction={{
+          text: "View Profile",
+          variant: "outline",
+          onPress: () => goToDoctorProfile(item.id),
         }}
       />
     );
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Text className="text-2xl font-bold text-center my-6 text-teal-700">
+    <View className="flex-1 bg-background">
+      <Text className="text-3xl font-bold text-center my-8 text-primary">
         Available Doctors
       </Text>
 
       <FlatList
         data={doctorList}
         renderItem={renderDoctor}
-        keyExtractor={(item) => item?.id.toString() ?? Math.random().toString()}
+        keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshing={loading}
         onRefresh={refetch}
         ListEmptyComponent={
-          <Text className="text-center text-gray-500 mt-10">
-            No doctors available
-          </Text>
+          <View className="flex-1 items-center justify-center mt-20">
+            <Text className="text-muted-foreground text-lg">
+              No doctors available at the moment
+            </Text>
+          </View>
         }
       />
     </View>

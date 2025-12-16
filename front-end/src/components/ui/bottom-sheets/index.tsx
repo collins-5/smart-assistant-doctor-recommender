@@ -5,12 +5,13 @@ import ResetPasswordBottomSheet, {
   ResetPasswordSheetDefinition,
 } from "./reset-password";
 import LogoutConfirmationSheet, { LogoutConfirmationSheetDefinition } from "./logout-confirmtion";
+import BookingSheet, { BookingSheetDefinition } from "./booking/booking-sheet";
 
 
 const sheets: Record<string, React.ElementType> = {
   "reset-password": ResetPasswordBottomSheet,
-  "logout-confirmation": LogoutConfirmationSheet
-
+  "logout-confirmation": LogoutConfirmationSheet,
+  booking: BookingSheet,
 };
 
 (() => {
@@ -23,6 +24,7 @@ declare module "react-native-actions-sheet" {
   interface Sheets {
     "reset-password": ResetPasswordSheetDefinition;
     "logout-confirmation": LogoutConfirmationSheetDefinition;
+    "booking": BookingSheetDefinition;
   }
 }
 

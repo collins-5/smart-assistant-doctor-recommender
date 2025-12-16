@@ -10,56 +10,64 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <Text className="text-gray-600">Loading profile...</Text>
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="text-muted-foreground text-lg">
+          Loading profile...
+        </Text>
       </View>
     );
   }
 
   if (!profile || error) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <Text className="text-destructive">
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="text-destructive text-lg">
           {error?.message || "Failed to load profile"}
         </Text>
       </View>
     );
   }
 
-  // This is the correct way — your hook returns patientId: number | null
   const hasPatientProfile = profile.patientId !== null;
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-blue-600 pt-16 pb-8 items-center">
+    <ScrollView
+      className="flex-1 bg-background"
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header - Now using bg-primary */}
+      <View className="bg-primary pt-16 pb-10 items-center">
         {profile.profilePictureUrl ? (
           <Image
             source={{ uri: profile.profilePictureUrl }}
-            className="w-32 h-32 rounded-full border-4 border-white"
+            className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
             resizeMode="cover"
           />
         ) : (
-          <View className="w-32 h-32 rounded-full bg-blue-500 border-4 border-white justify-center items-center">
-            <Text className="text-white text-5xl font-bold">
+          <View className="w-32 h-32 rounded-full bg-white/20 border-4 border-white/40 justify-center items-center shadow-lg">
+            <Text className="text-primary-foreground text-5xl font-bold">
               {profile.firstName[0]?.toUpperCase() || "U"}
-              {profile.lastName[0]?.toUpperCase()}
+              {profile.lastName[0]?.toUpperCase() || ""}
             </Text>
           </View>
         )}
-        <Text className="text-white text-2xl font-bold mt-4">
+
+        <Text className="text-primary-foreground text-3xl font-bold mt-5">
           {profile.fullName || "User"}
         </Text>
-        <Text className="text-blue-100 text-lg mt-1">{profile.email}</Text>
+        <Text className="text-primary-foreground/80 text-lg mt-1">
+          {profile.email}
+        </Text>
       </View>
 
       {/* Profile Info */}
-      <View className="px-6 py-6 space-y-4">
-        <View className="bg-white rounded-2xl p-5 shadow-sm">
-          <Text className="text-gray-500 text-sm font-medium mb-3">
+      <View className="px-6 -mt-6">
+        <View className="bg-card rounded-3xl shadow-xl p-6 border border-gray-200">
+          <Text className="text-foreground text-lg font-bold mb-5">
             Personal Information
           </Text>
-          <View className="space-y-3">
+
+          <View className="space-y-1">
             {profile.fullName && (
               <InfoRow
                 icon="person-outline"
@@ -118,12 +126,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* Account Actions */}
-        <View className="bg-white rounded-2xl p-5 shadow-sm">
-          <Text className="text-gray-500 text-sm font-medium mb-3">
+        <View className="bg-card rounded-3xl shadow-xl p-6 mt-6 border border-gray-200">
+          <Text className="text-foreground text-lg font-bold mb-5">
             Account
           </Text>
 
-          {/* Dynamic Button */}
           <TouchableOpacity
             onPress={() => {
               router.push(
@@ -137,39 +144,40 @@ export default function ProfileScreen() {
             <Ionicons
               name={hasPatientProfile ? "create-outline" : "person-add-outline"}
               size={24}
-              color="#007AFF"
+              color="rgb(14, 103, 126)"
             />
-            <Text className="ml-4 text-base text-foreground flex-1">
+            <Text className="ml-4 text-base text-foreground flex-1 font-medium">
               {hasPatientProfile ? "Edit Profile" : "Complete Your Profile"}
             </Text>
             <Ionicons name="chevron-forward" size={20} color="#999999" />
           </TouchableOpacity>
 
-          {/* Logout */}
           <TouchableOpacity
-            onPress={() => {
-              SheetManager.show("logout-confirmation");
-            }}
+            onPress={() => SheetManager.show("logout-confirmation")}
             className="flex-row items-center py-4"
           >
-            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-            <Text className="ml-4 text-base text-red-600 flex-1">Logout</Text>
+            <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+            <Text className="ml-4 text-base text-destructive flex-1 font-medium">
+              Logout
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* App Info */}
-        <View className="items-center mt-8 pb-10">
-          <Text className="text-gray-400 text-sm">
+        <View className="items-center mt-10 pb-10">
+          <Text className="text-muted-foreground text-sm font-medium">
             Smart Doctor Recommender
           </Text>
-          <Text className="text-gray-400 text-xs mt-1">Version 1.0.0</Text>
+          <Text className="text-muted-foreground text-xs mt-1">
+            Version 1.0.0
+          </Text>
         </View>
       </View>
     </ScrollView>
   );
 }
 
-// Reusable row
+// Reusable Info Row
 const InfoRow = ({
   icon,
   label,
@@ -179,11 +187,13 @@ const InfoRow = ({
   label: string;
   value: string;
 }) => (
-  <View className="flex-row items-center py-3 border-b border-gray-50 last:border-0">
-    <Ionicons name={icon} size={20} color="#666" />
-    <Text className="ml-4 text-gray-500 text-sm w-32">{label}</Text>
-    <Text className="text-gray-800 text-base flex-1 text-right">
-      {value || "Not set"}
+  <View className="flex-row items-center py-3 border-b border-gray-100 last:border-0">
+    <Ionicons name={icon} size={22} color="rgb(14, 103, 126)" />
+    <Text className="ml-4 text-muted-foreground text-sm w-32 font-medium">
+      {label}
+    </Text>
+    <Text className="text-foreground text-base flex-1 text-right font-medium">
+      {value}
     </Text>
   </View>
 );

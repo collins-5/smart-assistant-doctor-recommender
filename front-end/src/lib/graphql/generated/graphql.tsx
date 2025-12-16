@@ -329,6 +329,7 @@ export type Subscription = {
 
 
 export type SubscriptionRetrieveNewNotificationsArgs = {
+  jwtToken: Scalars['String']['input'];
   patientId: Scalars['Int']['input'];
 };
 
@@ -414,6 +415,13 @@ export type VerifyTokenMutationVariables = Exact<{
 
 export type VerifyTokenMutation = { __typename?: 'Mutation', verifyToken?: { __typename?: 'Verify', payload: any } | null };
 
+export type BookAppointmentMutationVariables = Exact<{
+  bookingArgs: AppointmentInput;
+}>;
+
+
+export type BookAppointmentMutation = { __typename?: 'Mutation', bookAppointment?: { __typename?: 'BookAppointment', appointment?: { __typename?: 'AppointmentType', id: string, rastucId: string, startTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null } | null };
+
 export type BookmarkDoctorMutationVariables = Exact<{
   doctorId: Scalars['Int']['input'];
 }>;
@@ -453,12 +461,13 @@ export type UnbookmarkDoctorMutationVariables = Exact<{
 
 export type UnbookmarkDoctorMutation = { __typename?: 'Mutation', unbookmarkDoctor?: { __typename?: 'UnbookmarkDoctor', success?: boolean | null } | null };
 
-export type OnNewNotificationSubscriptionVariables = Exact<{
+export type RetrieveNotificationsSubscriptionVariables = Exact<{
   patientId: Scalars['Int']['input'];
+  jwtToken: Scalars['String']['input'];
 }>;
 
 
-export type OnNewNotificationSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
+export type RetrieveNotificationsSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
 
 
 export const CreatePatientProfileDocument = gql`
@@ -784,6 +793,53 @@ export function useVerifyTokenMutation(baseOptions?: Apollo.MutationHookOptions<
 export type VerifyTokenMutationHookResult = ReturnType<typeof useVerifyTokenMutation>;
 export type VerifyTokenMutationResult = Apollo.MutationResult<VerifyTokenMutation>;
 export type VerifyTokenMutationOptions = Apollo.BaseMutationOptions<VerifyTokenMutation, VerifyTokenMutationVariables>;
+export const BookAppointmentDocument = gql`
+    mutation BookAppointment($bookingArgs: AppointmentInput!) {
+  bookAppointment(bookingArgs: $bookingArgs) {
+    appointment {
+      id
+      rastucId
+      startTime
+      encounterMode
+      cost
+      doctor {
+        id
+        fullName
+        title
+        primarySpecialty {
+          name
+        }
+      }
+    }
+  }
+}
+    `;
+export type BookAppointmentMutationFn = Apollo.MutationFunction<BookAppointmentMutation, BookAppointmentMutationVariables>;
+
+/**
+ * __useBookAppointmentMutation__
+ *
+ * To run a mutation, you first call `useBookAppointmentMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useBookAppointmentMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [bookAppointmentMutation, { data, loading, error }] = useBookAppointmentMutation({
+ *   variables: {
+ *      bookingArgs: // value for 'bookingArgs'
+ *   },
+ * });
+ */
+export function useBookAppointmentMutation(baseOptions?: Apollo.MutationHookOptions<BookAppointmentMutation, BookAppointmentMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<BookAppointmentMutation, BookAppointmentMutationVariables>(BookAppointmentDocument, options);
+      }
+export type BookAppointmentMutationHookResult = ReturnType<typeof useBookAppointmentMutation>;
+export type BookAppointmentMutationResult = Apollo.MutationResult<BookAppointmentMutation>;
+export type BookAppointmentMutationOptions = Apollo.BaseMutationOptions<BookAppointmentMutation, BookAppointmentMutationVariables>;
 export const BookmarkDoctorDocument = gql`
     mutation BookmarkDoctor($doctorId: Int!) {
   bookmarkDoctor(doctorId: $doctorId) {
@@ -1117,9 +1173,9 @@ export function useUnbookmarkDoctorMutation(baseOptions?: Apollo.MutationHookOpt
 export type UnbookmarkDoctorMutationHookResult = ReturnType<typeof useUnbookmarkDoctorMutation>;
 export type UnbookmarkDoctorMutationResult = Apollo.MutationResult<UnbookmarkDoctorMutation>;
 export type UnbookmarkDoctorMutationOptions = Apollo.BaseMutationOptions<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>;
-export const OnNewNotificationDocument = gql`
-    subscription OnNewNotification($patientId: Int!) {
-  retrieveNewNotifications(patientId: $patientId) {
+export const RetrieveNotificationsDocument = gql`
+    subscription RetrieveNotifications($patientId: Int!, $jwtToken: String!) {
+  retrieveNewNotifications(patientId: $patientId, jwtToken: $jwtToken) {
     id
     title
     description
@@ -1130,24 +1186,25 @@ export const OnNewNotificationDocument = gql`
     `;
 
 /**
- * __useOnNewNotificationSubscription__
+ * __useRetrieveNotificationsSubscription__
  *
- * To run a query within a React component, call `useOnNewNotificationSubscription` and pass it any options that fit your needs.
- * When your component renders, `useOnNewNotificationSubscription` returns an object from Apollo Client that contains loading, error, and data properties
+ * To run a query within a React component, call `useRetrieveNotificationsSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useRetrieveNotificationsSubscription` returns an object from Apollo Client that contains loading, error, and data properties
  * you can use to render your UI.
  *
  * @param baseOptions options that will be passed into the subscription, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
  *
  * @example
- * const { data, loading, error } = useOnNewNotificationSubscription({
+ * const { data, loading, error } = useRetrieveNotificationsSubscription({
  *   variables: {
  *      patientId: // value for 'patientId'
+ *      jwtToken: // value for 'jwtToken'
  *   },
  * });
  */
-export function useOnNewNotificationSubscription(baseOptions: Apollo.SubscriptionHookOptions<OnNewNotificationSubscription, OnNewNotificationSubscriptionVariables> & ({ variables: OnNewNotificationSubscriptionVariables; skip?: boolean; } | { skip: boolean; }) ) {
+export function useRetrieveNotificationsSubscription(baseOptions: Apollo.SubscriptionHookOptions<RetrieveNotificationsSubscription, RetrieveNotificationsSubscriptionVariables> & ({ variables: RetrieveNotificationsSubscriptionVariables; skip?: boolean; } | { skip: boolean; }) ) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useSubscription<OnNewNotificationSubscription, OnNewNotificationSubscriptionVariables>(OnNewNotificationDocument, options);
+        return Apollo.useSubscription<RetrieveNotificationsSubscription, RetrieveNotificationsSubscriptionVariables>(RetrieveNotificationsDocument, options);
       }
-export type OnNewNotificationSubscriptionHookResult = ReturnType<typeof useOnNewNotificationSubscription>;
-export type OnNewNotificationSubscriptionResult = Apollo.SubscriptionResult<OnNewNotificationSubscription>;
+export type RetrieveNotificationsSubscriptionHookResult = ReturnType<typeof useRetrieveNotificationsSubscription>;
+export type RetrieveNotificationsSubscriptionResult = Apollo.SubscriptionResult<RetrieveNotificationsSubscription>;
