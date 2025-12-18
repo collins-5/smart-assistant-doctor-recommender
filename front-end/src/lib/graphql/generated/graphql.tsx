@@ -55,8 +55,11 @@ export type BookmarkDoctor = {
 export type BookmarkedDoctorType = {
   __typename?: 'BookmarkedDoctorType';
   appointmentSet: Array<AppointmentType>;
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
   bio: Scalars['String']['output'];
   clinicVisitPrice: Scalars['Decimal']['output'];
+  country?: Maybe<CountryType>;
+  county?: Maybe<CountyType>;
   firstName: Scalars['String']['output'];
   fullName: Scalars['String']['output'];
   homecarePrice: Scalars['Decimal']['output'];
@@ -98,6 +101,20 @@ export type CountyType = {
   name: Scalars['String']['output'];
 };
 
+export type CreateDoctorAvailabilityBlock = {
+  __typename?: 'CreateDoctorAvailabilityBlock';
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
+  error?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CreateDoctorAvailabilityBlockInput = {
+  doctorId?: InputMaybe<Scalars['Int']['input']>;
+  endTime: Scalars['DateTime']['input'];
+  isRecurring?: InputMaybe<Scalars['Boolean']['input']>;
+  startTime: Scalars['DateTime']['input'];
+};
+
 export type CreatePatientProfile = {
   __typename?: 'CreatePatientProfile';
   error?: Maybe<Scalars['String']['output']>;
@@ -118,11 +135,27 @@ export type CreatePatientProfileInput = {
   phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type DoctorAvailabilityType = {
+  __typename?: 'DoctorAvailabilityType';
+  /** Automatically set to start_time + 30 minutes */
+  endTime: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** True if an appointment overlaps this slot */
+  isBooked?: Maybe<Scalars['Boolean']['output']>;
+  /** If true, this slot repeats weekly on the same day/time */
+  isRecurring: Scalars['Boolean']['output'];
+  /** Start of the 30-minute availability slot */
+  startTime: Scalars['DateTime']['output'];
+};
+
 export type DoctorType = {
   __typename?: 'DoctorType';
   appointmentSet: Array<AppointmentType>;
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
   bio: Scalars['String']['output'];
   clinicVisitPrice: Scalars['Decimal']['output'];
+  country?: Maybe<CountryType>;
+  county?: Maybe<CountyType>;
   firstName: Scalars['String']['output'];
   fullName: Scalars['String']['output'];
   homecarePrice: Scalars['Decimal']['output'];
@@ -171,6 +204,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   bookAppointment?: Maybe<BookAppointment>;
   bookmarkDoctor?: Maybe<BookmarkDoctor>;
+  createDoctorAvailabilityBlock?: Maybe<CreateDoctorAvailabilityBlock>;
   createPatientProfile?: Maybe<CreatePatientProfile>;
   editProfile?: Maybe<EditProfile>;
   refreshToken?: Maybe<Refresh>;
@@ -192,6 +226,11 @@ export type MutationBookAppointmentArgs = {
 
 export type MutationBookmarkDoctorArgs = {
   doctorId: Scalars['Int']['input'];
+};
+
+
+export type MutationCreateDoctorAvailabilityBlockArgs = {
+  input: CreateDoctorAvailabilityBlockInput;
 };
 
 
@@ -286,6 +325,8 @@ export type Query = {
   counties?: Maybe<Array<Maybe<CountyType>>>;
   countries?: Maybe<Array<Maybe<CountryType>>>;
   doctor?: Maybe<DoctorType>;
+  /** Fetch all future availability slots for a specific doctor */
+  doctorAvailabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
   doctors?: Maybe<Array<Maybe<DoctorType>>>;
   hello?: Maybe<Scalars['String']['output']>;
   insuarances?: Maybe<Array<Maybe<InsuaranceType>>>;
@@ -301,6 +342,11 @@ export type QueryCountiesArgs = {
 
 
 export type QueryDoctorArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
+export type QueryDoctorAvailabilitiesArgs = {
   id: Scalars['Int']['input'];
 };
 
@@ -462,7 +508,14 @@ export type GetDoctorQueryVariables = Exact<{
 }>;
 
 
-export type GetDoctorQuery = { __typename?: 'Query', doctor?: { __typename?: 'DoctorType', id: string, title: string, bio: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, user: { __typename?: 'UserType', phoneNumber?: string | null, email?: string | null } } | null };
+export type GetDoctorQuery = { __typename?: 'Query', doctor?: { __typename?: 'DoctorType', id: string, title: string, bio: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, user: { __typename?: 'UserType', phoneNumber?: string | null, email?: string | null }, availabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null } | null };
+
+export type GetDoctorAvailabilitiesQueryVariables = Exact<{
+  doctorId: Scalars['Int']['input'];
+}>;
+
+
+export type GetDoctorAvailabilitiesQuery = { __typename?: 'Query', doctorAvailabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null };
 
 export type GetMyAppointmentsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1017,6 +1070,12 @@ export const GetDoctorDocument = gql`
     title
     bio
     firstName
+    county {
+      name
+      country {
+        name
+      }
+    }
     lastName
     fullName
     profilePictureUrl
@@ -1040,6 +1099,13 @@ export const GetDoctorDocument = gql`
     user {
       phoneNumber
       email
+    }
+    availabilities {
+      id
+      startTime
+      endTime
+      isRecurring
+      isBooked
     }
   }
 }
@@ -1077,6 +1143,50 @@ export type GetDoctorQueryHookResult = ReturnType<typeof useGetDoctorQuery>;
 export type GetDoctorLazyQueryHookResult = ReturnType<typeof useGetDoctorLazyQuery>;
 export type GetDoctorSuspenseQueryHookResult = ReturnType<typeof useGetDoctorSuspenseQuery>;
 export type GetDoctorQueryResult = Apollo.QueryResult<GetDoctorQuery, GetDoctorQueryVariables>;
+export const GetDoctorAvailabilitiesDocument = gql`
+    query GetDoctorAvailabilities($doctorId: Int!) {
+  doctorAvailabilities(id: $doctorId) {
+    id
+    startTime
+    endTime
+    isRecurring
+    isBooked
+  }
+}
+    `;
+
+/**
+ * __useGetDoctorAvailabilitiesQuery__
+ *
+ * To run a query within a React component, call `useGetDoctorAvailabilitiesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetDoctorAvailabilitiesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetDoctorAvailabilitiesQuery({
+ *   variables: {
+ *      doctorId: // value for 'doctorId'
+ *   },
+ * });
+ */
+export function useGetDoctorAvailabilitiesQuery(baseOptions: Apollo.QueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables> & ({ variables: GetDoctorAvailabilitiesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+      }
+export function useGetDoctorAvailabilitiesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+        }
+export function useGetDoctorAvailabilitiesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+        }
+export type GetDoctorAvailabilitiesQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesQuery>;
+export type GetDoctorAvailabilitiesLazyQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesLazyQuery>;
+export type GetDoctorAvailabilitiesSuspenseQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesSuspenseQuery>;
+export type GetDoctorAvailabilitiesQueryResult = Apollo.QueryResult<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>;
 export const GetMyAppointmentsDocument = gql`
     query GetMyAppointments {
   appointments {

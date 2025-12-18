@@ -1,10 +1,17 @@
 # src/graphql/queries/getDoctor.graphql
+
 query GetDoctor($id: Int!) {
   doctor(id: $id) {
     id
     title
     bio
     firstName
+    county {
+      name
+      country {
+        name
+      }
+    }
     lastName
     fullName
     profilePictureUrl
@@ -28,6 +35,13 @@ query GetDoctor($id: Int!) {
     user {
       phoneNumber
       email
+    }
+    availabilities {
+      id
+      startTime
+      endTime
+      isRecurring
+      isBooked
     }
   }
 }

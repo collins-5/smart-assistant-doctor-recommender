@@ -93,3 +93,9 @@ CHANNEL_LAYERS = {
 }
 
 APPEND_SLASH = False
+
+# Enable timezone support (MUST be True)
+USE_TZ = True
+
+# Nairobi / Kenya timezone
+TIME_ZONE = 'Africa/Nairobi'

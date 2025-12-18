@@ -65,6 +65,7 @@ export default function DoctorProfileScreen() {
   };
 
   return (
+    <>
     <ScrollView
       className="flex-1 bg-gray-50"
       showsVerticalScrollIndicator={false}
@@ -195,5 +196,7 @@ export default function DoctorProfileScreen() {
         </View>
       </View>
     </ScrollView>
+    </>
+
   );
 }

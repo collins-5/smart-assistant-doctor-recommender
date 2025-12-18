@@ -1,19 +1,23 @@
-# core/admin.py — FINAL VERSION (Admin + GraphQL upload both work perfectly)
+# core/admin.py — FINAL CORRECTED VERSION (No more validation errors on save)
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
 from django import forms
 from django.core.files.base import ContentFile
+from django.utils.html import format_html
+from datetime import timedelta
 import os
 
 from .models import (
     User, Patient, Doctor, Specialty, Appointment,
     Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
-    Country, County, Insuarance,
+    Country, County, Insuarance, DoctorAvailability,
 )
 
 # Optional: cleaner sidebar
 admin.site.unregister(Group)
+
 
 # ====================== USER ADMIN ======================
 @admin.register(User)
@@ -34,6 +38,7 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
+
 # ====================== PATIENT ADMIN WITH SAFE FILE UPLOAD ======================
 class PatientAdminForm(forms.ModelForm):
     class Meta:
@@ -45,22 +50,20 @@ class PatientAdminForm(forms.ModelForm):
         if not file:
             return file
 
-        # If it's a real uploaded file (from admin), force safe copy into MEDIA_ROOT
         if hasattr(file, 'read') and hasattr(file, 'name'):
             try:
                 content = file.read()
                 file_name = os.path.basename(file.name)
                 safe_file = ContentFile(content, name=file_name)
                 return safe_file
-            except Exception as e:
-                # Fallback: let Django handle it (will fail if path is bad, but we tried)
+            except Exception:
                 pass
         return file
 
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    form = PatientAdminForm  # ← THIS FIXES THE SUSPICIOUS FILE ERROR
+    form = PatientAdminForm
     list_display = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender', 'country', 'county', 'preview_photo')
     search_fields = ('user__email', 'user__phone_number', 'first_name', 'last_name')
     list_filter = ('gender', 'date_of_birth', 'country')
@@ -68,7 +71,6 @@ class PatientAdmin(admin.ModelAdmin):
 
     def preview_photo(self, obj):
         if obj.profile_picture:
-            from django.utils.html import format_html
             return format_html(
                 '<img src="{}" width="40" height="40" style="border-radius:50%; object-fit:cover;" />',
                 obj.profile_picture.url
@@ -76,7 +78,24 @@ class PatientAdmin(admin.ModelAdmin):
         return "(No photo)"
     preview_photo.short_description = "Photo"
 
-# ====================== DOCTOR ADMIN ======================
+
+# ====================== DOCTOR AVAILABILITY INLINE (IMPROVED) ======================
+class DoctorAvailabilityInline(admin.TabularInline):
+    model = DoctorAvailability
+    extra = 1
+    ordering = ('start_time',)
+    fields = ('start_time', 'is_recurring', 'end_time_display')
+    readonly_fields = ('end_time_display',)
+
+    def end_time_display(self, obj):
+        if obj.pk and obj.start_time:
+            end = obj.start_time + timedelta(minutes=30)
+            return end.strftime('%Y-%m-%d %H:%M')
+        return "— (Will be set to +30 min after save)"
+    end_time_display.short_description = "End Time"
+
+
+# ====================== DOCTOR ADMIN WITH AVAILABILITY INLINE ======================
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'get_email', 'primary_specialty', 'takes_prepaid_payment', 'teleconsult_price')
@@ -84,21 +103,47 @@ class DoctorAdmin(admin.ModelAdmin):
     search_fields = ('user__email', 'first_name', 'last_name', 'full_name')
     raw_id_fields = ('user', 'primary_specialty')
     readonly_fields = ('full_name',)
+    inlines = [DoctorAvailabilityInline]
 
     def get_email(self, obj):
         return obj.user.email if obj.user else '-'
     get_email.short_description = 'Email'
 
-# ====================== OTHER ADMINS (unchanged) ======================
+
+# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN ======================
+@admin.register(DoctorAvailability)
+class DoctorAvailabilityAdmin(admin.ModelAdmin):
+    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'is_booked_status')
+    list_filter = ('is_recurring', 'start_time', 'doctor')
+    search_fields = ('doctor__full_name', 'doctor__user__email')
+    readonly_fields = ('end_time',)
+    date_hierarchy = 'start_time'
+    ordering = ('-start_time',)
+
+    def is_booked_status(self, obj):
+        booked = Appointment.objects.filter(
+            doctor=obj.doctor,
+            start_time__lt=obj.end_time,
+            end_time__gt=obj.start_time,
+        ).exists()
+        color = "red" if booked else "green"
+        status = "Booked" if booked else "Available"
+        return format_html(f'<span style="color:{color}; font-weight:bold;">● {status}</span>')
+    is_booked_status.short_description = "Status"
+
+
+# ====================== OTHER ADMINS ======================
 @admin.register(Specialty)
 class SpecialtyAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
+
 @admin.register(Insuarance)
-class SpecialtyAdmin(admin.ModelAdmin):
+class InsuaranceAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
 
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
@@ -115,10 +160,12 @@ class AppointmentAdmin(admin.ModelAdmin):
     date_hierarchy = 'start_time'
     ordering = ('-start_time',)
 
+
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ('name', 'type')
     search_fields = ('name', 'type')
+
 
 @admin.register(OrganizationClinic)
 class OrganizationClinicAdmin(admin.ModelAdmin):
@@ -126,11 +173,13 @@ class OrganizationClinicAdmin(admin.ModelAdmin):
     search_fields = ('name', 'organization__name')
     raw_id_fields = ('organization',)
 
+
 @admin.register(PatientDoctorBookmark)
 class PatientDoctorBookmarkAdmin(admin.ModelAdmin):
     list_display = ('patient', 'doctor', 'created_at')
     list_filter = ('created_at',)
     raw_id_fields = ('patient', 'doctor')
+
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -140,11 +189,13 @@ class NotificationAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     raw_id_fields = ('patient',)
 
+
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     ordering = ('name',)
+
 
 @admin.register(County)
 class CountyAdmin(admin.ModelAdmin):
