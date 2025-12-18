@@ -1,4 +1,4 @@
-# schema.py (FULL FILE - NOTHING OMITTED)
+# schema.py (FULL FILE - UPDATED WITH DOCTOR INSURANCES)
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -12,7 +12,7 @@ import uuid
 from graphene_file_upload.scalars import Upload  # ← FOR FILE UPLOAD
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
-    PatientDoctorBookmark, Notification, Country, County
+    PatientDoctorBookmark, Notification, Country, County, Insuarance
 )
 
 # ==================== TYPES ====================
@@ -80,6 +80,11 @@ class AppointmentType(DjangoObjectType):
 class SpecialtyType(DjangoObjectType):
     class Meta:
         model = Specialty
+        fields = "__all__"
+
+class InsuaranceType(DjangoObjectType):
+    class Meta:
+        model = Insuarance
         fields = "__all__"
 
 class NotificationType(graphene.ObjectType):
@@ -295,7 +300,7 @@ class EditProfile(graphene.Mutation):
         if input.county_id is not None:
             try:
                 patient.county = County.objects.get(id=input.county_id)
-            except Country.DoesNotExist:
+            except County.DoesNotExist:
                 return EditProfile(success=False, error="Invalid county")
 
         patient.save()
@@ -444,7 +449,9 @@ class Query(graphene.ObjectType):
     hello = graphene.String(default_value="Health Backend API is LIVE!")
     me = graphene.Field(UserType)
     doctors = graphene.List(DoctorType)
+    doctor = graphene.Field(DoctorType, id=graphene.Int(required=True))  # ← NEW: Single doctor query
     specialties = graphene.List(SpecialtyType)
+    insuarances = graphene.List(InsuaranceType) 
     patients = graphene.List(PatientType)
     appointments = graphene.List(AppointmentType)
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
@@ -457,8 +464,17 @@ class Query(graphene.ObjectType):
     def resolve_doctors(self, info):
         return Doctor.objects.all()
 
+    def resolve_doctor(self, info, id):
+        try:
+            return Doctor.objects.get(pk=id)
+        except Doctor.DoesNotExist:
+            return None
+
     def resolve_specialties(self, info):
         return Specialty.objects.all()
+
+    def resolve_insuarances(self, info):
+        return Insuarance.objects.all()
 
     def resolve_patients(self, info):
         if info.context.user.is_staff:

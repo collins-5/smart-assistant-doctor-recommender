@@ -9,7 +9,7 @@ import os
 from .models import (
     User, Patient, Doctor, Specialty, Appointment,
     Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
-    Country, County
+    Country, County, Insuarance,
 )
 
 # Optional: cleaner sidebar
@@ -91,6 +91,11 @@ class DoctorAdmin(admin.ModelAdmin):
 
 # ====================== OTHER ADMINS (unchanged) ======================
 @admin.register(Specialty)
+class SpecialtyAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+@admin.register(Insuarance)
 class SpecialtyAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)

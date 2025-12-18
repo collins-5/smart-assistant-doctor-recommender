@@ -1,5 +1,5 @@
 // src/components/core/DoctorCard.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ interface DoctorCardProps {
   id: number;
   title?: string | null;
   firstName?: string | null;
+  bio?: string | null;
   lastName?: string | null;
   fullName?: string | null;
   profilePictureUrl?: string | null;
@@ -87,6 +88,7 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   firstName,
   lastName,
   fullName,
+  bio,
   profilePictureUrl,
   primarySpecialty,
   subSpecialties,
@@ -99,13 +101,23 @@ export const DoctorCard: FC<DoctorCardProps> = ({
 }) => {
   const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const onTextLayout = (event: any) => {
+    const { lines } = event.nativeEvent;
+    if (lines.length > 4) {
+      setIsTruncated(true);
+    }
+  };
+
   const CardWrapper = onPressCard ? TouchableOpacity : View;
 
   return (
     <CardWrapper
       onPress={onPressCard}
       activeOpacity={onPressCard ? 0.95 : 1}
-      className="bg-card rounded-2xl overflow-hidden shadow-lg mx-4 mb-5 border border-gray-200"
+      className="bg-card rounded-2xl overflow-hidden shadow-lg mx-4 mb-2 border border-gray-200"
     >
       <View className="p-5 flex-row">
         {/* Profile Picture */}
@@ -156,22 +168,48 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               )}
             </View>
           )}
-
-          <View className="flex-row gap-4 mt-4">
-            {teleconsultPrice != null && (
-              <Text className="text-xs text-muted-foreground">
-                Video: KES {teleconsultPrice}
+          {bio && (
+            <View className="mt-2">
+              <Text
+                className="text-gray-700 text-base leading-6"
+                numberOfLines={isExpanded ? undefined : 4}
+                onTextLayout={!isExpanded ? onTextLayout : undefined}
+              >
+                {bio}
               </Text>
+
+              {isTruncated && (
+                <Text
+                  onPress={() => setIsExpanded(!isExpanded)}
+                  className="text-primary font-semibold mt-2"
+                >
+                  {isExpanded ? "Show less" : "Read more"}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View className="flex-row gap-2 mt-4">
+            {teleconsultPrice != null && (
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Video: {teleconsultPrice} /=
+                </Text>
+              </View>
             )}
             {clinicVisitPrice != null && (
-              <Text className="text-xs text-muted-foreground">
-                Clinic: KES {clinicVisitPrice}
-              </Text>
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Clinic: {clinicVisitPrice} /=
+                </Text>
+              </View>
             )}
             {homecarePrice != null && (
-              <Text className="text-xs text-muted-foreground">
-                Home: KES {homecarePrice}
-              </Text>
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Home: {homecarePrice} /=
+                </Text>
+              </View>
             )}
           </View>
         </View>

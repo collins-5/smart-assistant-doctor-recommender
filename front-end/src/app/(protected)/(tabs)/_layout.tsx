@@ -28,8 +28,18 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="doctors"
+          name="doctors/doctors"
           options={{
+            tabBarLabel: "Doctors",
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="doctor" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="doctors/[id]"
+          options={{
+            href: null,
             tabBarLabel: "Doctors",
             tabBarIcon: ({ color, size }) => (
               <Icon name="doctor" size={size} color={color} />

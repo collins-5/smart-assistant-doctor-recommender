@@ -19,11 +19,12 @@ export default function DoctorsScreen() {
     });
   };
 
-  const goToDoctorProfile = (doctorId: number) => {
-    // Change this to match your navigation setup
-    router.push(`/doctor/${doctorId}`);
-    // or: navigation.navigate("DoctorProfile", { id: doctorId })
-  };
+const goToDoctorProfile = (doctorId: number) => {
+  router.push({
+    pathname: "/(protected)/doctors/[id]",
+    params: { id: doctorId.toString() },
+  });
+};
 
   const renderDoctor = ({ item }: { item: Doctor }) => {
     if (!item) return null;
@@ -56,9 +57,11 @@ export default function DoctorsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Text className="text-3xl font-bold text-center my-8 text-primary">
+    <View className="bg-primary py-2  mb-2">
+      <Text className="text-3xl font-bold text-center my-1 text-primary-foreground">
         Available Doctors
       </Text>
+      </View>
 
       <FlatList
         data={doctorList}

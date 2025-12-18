@@ -82,11 +82,20 @@ class Specialty(models.Model):
 
     def __str__(self):
         return self.name
+    
+ # insuarance
+
+class Insuarance(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor')
     title = models.CharField(max_length=50, blank=True)
+    bio = models.CharField(max_length=1000,blank=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     full_name = models.CharField(max_length=200, blank=True)
@@ -101,6 +110,18 @@ class Doctor(models.Model):
         blank=True,
         related_name='subspecialty_doctors'
     )
+    
+    # insuarance
+
+    insuarance = models.ManyToManyField(
+        Insuarance,
+        blank=True,
+        related_name='insuarance'
+    )
+
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True)
+    county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True, blank=True)
+    
     takes_postpaid_payment = models.BooleanField(default=True)
     takes_prepaid_payment = models.BooleanField(default=True)
     teleconsult_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
