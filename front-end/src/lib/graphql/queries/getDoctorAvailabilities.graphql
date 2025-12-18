@@ -1,0 +1,9 @@
+query GetDoctorAvailabilities($doctorId: Int!) {
+  doctorAvailabilities(id: $doctorId) {
+    id
+    startTime
+    endTime
+    isRecurring
+    isBooked
+  }
+}

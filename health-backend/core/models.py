@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import default_storage
+from datetime import timedelta
+from django.core.exceptions import ValidationError
 
 
 class User(AbstractUser):
@@ -51,11 +53,9 @@ class Patient(models.Model):
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
 
-    # LOCATION
     country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True)
     county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True, blank=True)
 
-    # PROFILE PICTURE
     profile_picture = models.ImageField(
         upload_to='profile_pictures/',
         null=True,
@@ -66,7 +66,6 @@ class Patient(models.Model):
         return f"{self.first_name} {self.last_name}"
 
     def save(self, *args, **kwargs):
-        # Delete old photo when updating
         try:
             old = Patient.objects.get(pk=self.pk)
             if old.profile_picture and old.profile_picture != self.profile_picture:
@@ -84,9 +83,17 @@ class Specialty(models.Model):
         return self.name
 
 
+class Insuarance(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor')
     title = models.CharField(max_length=50, blank=True)
+    bio = models.CharField(max_length=1000, blank=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     full_name = models.CharField(max_length=200, blank=True)
@@ -101,13 +108,21 @@ class Doctor(models.Model):
         blank=True,
         related_name='subspecialty_doctors'
     )
+    insuarance = models.ManyToManyField(
+        Insuarance,
+        blank=True,
+        related_name='insuarance'
+    )
+
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True)
+    county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True, blank=True)
+    
     takes_postpaid_payment = models.BooleanField(default=True)
     takes_prepaid_payment = models.BooleanField(default=True)
     teleconsult_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     clinic_visit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     homecare_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
-    # PROFILE PICTURE
     profile_picture = models.ImageField(
         upload_to='doctor_profile_pictures/',
         null=True,
@@ -115,7 +130,6 @@ class Doctor(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        # Delete old photo when updating
         try:
             old = Doctor.objects.get(pk=self.pk)
             if old.profile_picture and old.profile_picture != self.profile_picture:
@@ -124,7 +138,6 @@ class Doctor(models.Model):
         except Doctor.DoesNotExist:
             pass
         
-        # Update full_name
         if not self.full_name:
             self.full_name = f"{self.title} {self.first_name} {self.last_name}".strip()
         
@@ -132,6 +145,50 @@ class Doctor(models.Model):
 
     def __str__(self):
         return self.full_name
+
+
+class DoctorAvailability(models.Model):
+    doctor = models.ForeignKey(
+        Doctor,
+        on_delete=models.CASCADE,
+        related_name='availabilities'
+    )
+    start_time = models.DateTimeField(help_text="Start of the 30-minute availability slot")
+    end_time = models.DateTimeField(
+        help_text="Automatically set to start_time + 30 minutes",
+        editable=False  # Prevent manual editing in admin/forms
+    )
+    is_recurring = models.BooleanField(
+        default=False,
+        help_text="If true, this slot repeats weekly on the same day/time"
+    )
+
+    class Meta:
+        unique_together = ('doctor', 'start_time')
+        ordering = ['start_time']
+        indexes = [
+            models.Index(fields=['doctor', 'start_time']),
+            models.Index(fields=['start_time']),
+        ]
+
+    def clean(self):
+        """
+        Only validate if end_time is manually set (should not happen due to editable=False).
+        This prevents unnecessary errors when saving from admin.
+        """
+        if self.end_time and self.end_time != self.start_time + timedelta(minutes=30):
+            raise ValidationError("End time must be exactly 30 minutes after start time.")
+
+    def save(self, *args, **kwargs):
+        """
+        Always force end_time to be exactly start_time + 30 minutes.
+        This ensures consistency even if someone tries to override it.
+        """
+        self.end_time = self.start_time + timedelta(minutes=30)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.doctor.full_name} - {self.start_time.strftime('%Y-%m-%d %H:%M')} to {self.end_time.strftime('%H:%M')}"
 
 
 class Organization(models.Model):

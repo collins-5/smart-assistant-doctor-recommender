@@ -1,37 +1,38 @@
-import * as React from 'react';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import * as React from "react";
+import { Animated, View, ViewStyle } from "react-native";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 const duration = 1000;
 
 function Skeleton({
   className,
+  style,
   ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Animated.View>, 'style'>) {
-  const sv = useSharedValue(1);
+}: React.ComponentPropsWithoutRef<typeof View> & { style?: ViewStyle }) {
+  const opacity = React.useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
-    sv.value = withRepeat(
-      withSequence(withTiming(0.5, { duration }), withTiming(1, { duration })),
-      -1
-    );
-  }, []);
-
-  const style = useAnimatedStyle(() => ({
-    opacity: sv.value,
-  }));
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 0.5,
+          duration,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [opacity]);
 
   return (
     <Animated.View
-      style={style}
-      className={cn('rounded-md bg-primary/15 dark:bg-muted', className)}
+      style={[{ opacity }, style]}
+      className={cn("rounded-md bg-gray-300", className)}
       {...props}
     />
   );

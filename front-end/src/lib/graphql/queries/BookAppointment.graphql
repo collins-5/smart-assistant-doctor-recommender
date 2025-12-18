@@ -1,0 +1,20 @@
+# Add this to your .graphql files (e.g. mutations.graphql)
+mutation BookAppointment($bookingArgs: AppointmentInput!) {
+  bookAppointment(bookingArgs: $bookingArgs) {
+    appointment {
+      id
+      rastucId
+      startTime
+      encounterMode
+      cost
+      doctor {
+        id
+        fullName
+        title
+        primarySpecialty {
+          name
+        }
+      }
+    }
+  }
+}

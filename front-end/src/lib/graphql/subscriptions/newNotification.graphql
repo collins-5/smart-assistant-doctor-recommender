@@ -1,5 +1,5 @@
-subscription OnNewNotification($patientId: Int!) {
-  retrieveNewNotifications(patientId: $patientId) {
+subscription RetrieveNotifications($patientId: Int!, $jwtToken: String!) {
+  retrieveNewNotifications(patientId: $patientId, jwtToken: $jwtToken) {
     id
     title
     description

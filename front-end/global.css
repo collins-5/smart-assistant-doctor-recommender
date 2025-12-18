@@ -10,6 +10,7 @@
     /* Define colors directly in RGB */
     .bg-background {
         background-color: rgb(245, 245, 245);
+        color: #11695f;
         /* Light off-white for background */
     }
 

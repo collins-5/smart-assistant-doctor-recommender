@@ -1,7 +1,13 @@
-// src/components/DoctorCard.tsx
-import { View, Text, Image, TouchableOpacity } from "react-native";
+// src/components/core/DoctorCard.tsx
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import type { FC } from "react";
-
 import { BookmarkDoctorButton } from "./bookmark-button";
 import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
 
@@ -10,10 +16,19 @@ interface Specialty {
   name: string;
 }
 
+interface ActionButton {
+  text: string;
+  onPress: () => void;
+  variant?: "default" | "outline" | "destructive";
+  loading?: boolean;
+  disabled?: boolean;
+}
+
 interface DoctorCardProps {
   id: number;
   title?: string | null;
   firstName?: string | null;
+  bio?: string | null;
   lastName?: string | null;
   fullName?: string | null;
   profilePictureUrl?: string | null;
@@ -22,104 +37,204 @@ interface DoctorCardProps {
   teleconsultPrice?: number | string | null;
   clinicVisitPrice?: number | string | null;
   homecarePrice?: number | string | null;
-  onPress?: () => void;
+
+  // Optional buttons
+  primaryAction?: ActionButton;
+  secondaryAction?: ActionButton;
+
+  // Optional: tap entire card
+  onPressCard?: () => void;
 }
+
+// Reusable internal button
+const ActionButton: FC<{
+  button: ActionButton;
+  className?: string;
+}> = ({ button, className = "" }) => {
+  const { text, onPress, variant = "default", loading, disabled } = button;
+
+  const variants = {
+    default: "bg-primary text-primary-foreground",
+    outline: "border-2 border-primary text-primary bg-transparent",
+    destructive: "bg-destructive text-primary-foreground",
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      className={`px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 ${variants[variant]} ${disabled || loading ? "opacity-60" : ""} ${className}`}
+      activeOpacity={0.8}
+    >
+      {loading ? (
+        <ActivityIndicator color="white" size="small" />
+      ) : (
+        <Text
+          className={
+            variant === "outline"
+              ? "text-primary font-medium"
+              : "text-primary-foreground font-medium"
+          }
+        >
+          {text}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 export const DoctorCard: FC<DoctorCardProps> = ({
   id,
   firstName,
   lastName,
   fullName,
+  bio,
   profilePictureUrl,
   primarySpecialty,
   subSpecialties,
   teleconsultPrice,
   clinicVisitPrice,
   homecarePrice,
-  onPress,
+  primaryAction,
+  secondaryAction,
+  onPressCard,
 }) => {
-  // Use your existing hook – it reads from the same cache that useBookmarkDoctor updates
   const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
-  const isBookmarked = bookmarkedDoctors.some((doc: any) => doc.id === id);
 
-  const CardWrapper = onPress ? TouchableOpacity : View;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const onTextLayout = (event: any) => {
+    const { lines } = event.nativeEvent;
+    if (lines.length > 4) {
+      setIsTruncated(true);
+    }
+  };
+
+  const CardWrapper = onPressCard ? TouchableOpacity : View;
 
   return (
     <CardWrapper
-      onPress={onPress}
-      className="p-4 bg-white m-2 rounded-lg shadow flex-row relative"
-      activeOpacity={onPress ? 0.7 : 1}
+      onPress={onPressCard}
+      activeOpacity={onPressCard ? 0.95 : 1}
+      className="bg-card rounded-2xl overflow-hidden shadow-lg mx-4 mb-2 border border-gray-200"
     >
-      {/* Profile Picture */}
-      <View className="mr-4">
-        {profilePictureUrl ? (
-          <Image
-            source={{ uri: profilePictureUrl }}
-            className="w-20 h-20 rounded-full"
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="w-20 h-20 rounded-full bg-teal-100 items-center justify-center">
-            <Text className="text-teal-600 text-2xl font-bold">
-              {firstName?.[0]}
-              {lastName?.[0]}
-            </Text>
-          </View>
-        )}
-      </View>
+      <View className="p-5 flex-row">
+        {/* Profile Picture */}
+        <View className="mr-4">
+          {profilePictureUrl ? (
+            <Image
+              source={{ uri: profilePictureUrl }}
+              className="w-20 h-20 rounded-2xl"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-20 h-20 rounded-2xl bg-primary/20 items-center justify-center">
+              <Text className="text-primary text-2xl font-bold">
+                {firstName?.[0]}
+                {lastName?.[0]}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      {/* Doctor Info */}
-      <View className="flex-1 pr-10">
-        {/* pr-10 to make space for bookmark button */}
-        <Text className="text-lg font-bold text-teal-600">{fullName}</Text>
-        <Text className="text-gray-600">
-          {primarySpecialty?.name || "General Practice"}
-        </Text>
-        {subSpecialties && subSpecialties.length > 0 && (
-          <View className="mt-3">
-            <Text className="text-sm font-semibold text-gray-600 mb-1">
-              Sub-specialties:
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {subSpecialties.map((sub) => (
+        {/* Info */}
+        <View className="flex-1">
+          <Text className="text-xl font-bold text-foreground">
+            {fullName ||
+              `${firstName || ""} ${lastName || ""}`.trim() ||
+              "Dr. Unknown"}
+          </Text>
+          <Text className="text-muted-foreground mt-1">
+            {primarySpecialty?.name || "General Practitioner"}
+          </Text>
+
+          {subSpecialties && subSpecialties.length > 0 && (
+            <View className="mt-3 flex-row flex-wrap gap-2">
+              {subSpecialties.slice(0, 3).map((sub) => (
                 <View
                   key={sub.id}
-                  className="bg-teal-100 px-3 py-1 rounded-full"
+                  className="bg-primary/10 px-3 py-1 rounded-full"
                 >
-                  <Text className="text-teal-800 text-xs font-medium">
+                  <Text className="text-primary text-xs font-medium">
                     {sub.name}
                   </Text>
                 </View>
               ))}
+              {subSpecialties.length > 3 && (
+                <Text className="text-muted-foreground text-xs">
+                  +{subSpecialties.length - 3} more
+                </Text>
+              )}
             </View>
+          )}
+          {bio && (
+            <View className="mt-2">
+              <Text
+                className="text-gray-700 text-base leading-6"
+                numberOfLines={isExpanded ? undefined : 4}
+                onTextLayout={!isExpanded ? onTextLayout : undefined}
+              >
+                {bio}
+              </Text>
+
+              {isTruncated && (
+                <Text
+                  onPress={() => setIsExpanded(!isExpanded)}
+                  className="text-primary font-semibold mt-2"
+                >
+                  {isExpanded ? "Show less" : "Read more"}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View className="flex-row gap-2 mt-4">
+            {teleconsultPrice != null && (
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Video: {teleconsultPrice} /=
+                </Text>
+              </View>
+            )}
+            {clinicVisitPrice != null && (
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Clinic: {clinicVisitPrice} /=
+                </Text>
+              </View>
+            )}
+            {homecarePrice != null && (
+              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+                <Text className="text-xs text-primary-foreground">
+                  Home: {homecarePrice} /=
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-        <View className="flex-row justify-between mt-4">
-          {teleconsultPrice != null && (
-            <Text className="text-xs text-gray-500">
-              Tele: KES {teleconsultPrice}
-            </Text>
-          )}
-          {clinicVisitPrice != null && (
-            <Text className="text-xs text-gray-500">
-              Clinic: KES {clinicVisitPrice}
-            </Text>
-          )}
-          {homecarePrice != null && (
-            <Text className="text-xs text-gray-500">
-              Home: KES {homecarePrice}
-            </Text>
-          )}
+        </View>
+
+        {/* Bookmark */}
+        <View className="absolute top-4 right-4">
+          <BookmarkDoctorButton doctorId={id} size={26} />
         </View>
       </View>
 
-      {/* Bookmark Button – top right */}
-      <View className="absolute top-3 right-3 z-10">
-        <BookmarkDoctorButton
-          doctorId={id}
-          size={24}
-        />
-      </View>
+      {/* Optional Action Buttons */}
+      {(primaryAction || secondaryAction) && (
+        <View className="px-5 pb-5 border-t border-gray-200 pt-4">
+          {secondaryAction ? (
+            <View className="flex-row gap-3">
+              {primaryAction && (
+                <ActionButton button={primaryAction} className="flex-1" />
+              )}
+              <ActionButton button={secondaryAction} className="flex-1" />
+            </View>
+          ) : primaryAction ? (
+            <ActionButton button={primaryAction} />
+          ) : null}
+        </View>
+      )}
     </CardWrapper>
   );
 };

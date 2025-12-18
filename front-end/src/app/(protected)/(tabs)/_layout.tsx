@@ -13,8 +13,8 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#3b82f6", // Tailwind blue-500
-          tabBarInactiveTintColor: "#6b7280", // Tailwind gray-500
+          tabBarActiveTintColor: "#rgb(14, 103, 126)",
+          tabBarInactiveTintColor: "#6b7280",
           tabBarStyle: { backgroundColor: "#fff" },
         }}
       >
@@ -23,13 +23,23 @@ export default function TabsLayout() {
           options={{
             tabBarLabel: "Home",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list" size={size} color={color} />
+              <Ionicons name="home" size={size} color={color} />
             ),
           }}
         />
         <Tabs.Screen
-          name="doctors"
+          name="doctors/doctors"
           options={{
+            tabBarLabel: "Doctors",
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="doctor" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="doctors/[id]"
+          options={{
+            href: null,
             tabBarLabel: "Doctors",
             tabBarIcon: ({ color, size }) => (
               <Icon name="doctor" size={size} color={color} />
@@ -46,11 +56,30 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="appointments"
+          options={{
+            title: "Appointments",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="calendar" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="profile"
           options={{
             tabBarLabel: "profile",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            href: null,
+            tabBarLabel: "Notifications",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="musical-notes-sharp" size={size} color={color} />
             ),
           }}
         />

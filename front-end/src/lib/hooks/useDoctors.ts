@@ -7,6 +7,7 @@ export const useDoctors = () => {
         fetchPolicy: 'cache-and-network', // Recommended: gets from cache + fresh data
     });
 
+
     return {
         doctors: data?.doctors || [],
         loading,

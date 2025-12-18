@@ -55,11 +55,16 @@ export type BookmarkDoctor = {
 export type BookmarkedDoctorType = {
   __typename?: 'BookmarkedDoctorType';
   appointmentSet: Array<AppointmentType>;
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
+  bio: Scalars['String']['output'];
   clinicVisitPrice: Scalars['Decimal']['output'];
+  country?: Maybe<CountryType>;
+  county?: Maybe<CountyType>;
   firstName: Scalars['String']['output'];
   fullName: Scalars['String']['output'];
   homecarePrice: Scalars['Decimal']['output'];
   id: Scalars['ID']['output'];
+  insuarance: Array<InsuaranceType>;
   lastName: Scalars['String']['output'];
   primarySpecialty?: Maybe<SpecialtyType>;
   profilePicture?: Maybe<Scalars['String']['output']>;
@@ -96,6 +101,20 @@ export type CountyType = {
   name: Scalars['String']['output'];
 };
 
+export type CreateDoctorAvailabilityBlock = {
+  __typename?: 'CreateDoctorAvailabilityBlock';
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
+  error?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CreateDoctorAvailabilityBlockInput = {
+  doctorId?: InputMaybe<Scalars['Int']['input']>;
+  endTime: Scalars['DateTime']['input'];
+  isRecurring?: InputMaybe<Scalars['Boolean']['input']>;
+  startTime: Scalars['DateTime']['input'];
+};
+
 export type CreatePatientProfile = {
   __typename?: 'CreatePatientProfile';
   error?: Maybe<Scalars['String']['output']>;
@@ -116,14 +135,32 @@ export type CreatePatientProfileInput = {
   phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type DoctorAvailabilityType = {
+  __typename?: 'DoctorAvailabilityType';
+  /** Automatically set to start_time + 30 minutes */
+  endTime: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** True if an appointment overlaps this slot */
+  isBooked?: Maybe<Scalars['Boolean']['output']>;
+  /** If true, this slot repeats weekly on the same day/time */
+  isRecurring: Scalars['Boolean']['output'];
+  /** Start of the 30-minute availability slot */
+  startTime: Scalars['DateTime']['output'];
+};
+
 export type DoctorType = {
   __typename?: 'DoctorType';
   appointmentSet: Array<AppointmentType>;
+  availabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
+  bio: Scalars['String']['output'];
   clinicVisitPrice: Scalars['Decimal']['output'];
+  country?: Maybe<CountryType>;
+  county?: Maybe<CountyType>;
   firstName: Scalars['String']['output'];
   fullName: Scalars['String']['output'];
   homecarePrice: Scalars['Decimal']['output'];
   id: Scalars['ID']['output'];
+  insuarance: Array<InsuaranceType>;
   lastName: Scalars['String']['output'];
   primarySpecialty?: Maybe<SpecialtyType>;
   profilePicture?: Maybe<Scalars['String']['output']>;
@@ -156,10 +193,18 @@ export type EditProfileInput = {
   phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type InsuaranceType = {
+  __typename?: 'InsuaranceType';
+  id: Scalars['ID']['output'];
+  insuarance: Array<BookmarkedDoctorType>;
+  name: Scalars['String']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   bookAppointment?: Maybe<BookAppointment>;
   bookmarkDoctor?: Maybe<BookmarkDoctor>;
+  createDoctorAvailabilityBlock?: Maybe<CreateDoctorAvailabilityBlock>;
   createPatientProfile?: Maybe<CreatePatientProfile>;
   editProfile?: Maybe<EditProfile>;
   refreshToken?: Maybe<Refresh>;
@@ -181,6 +226,11 @@ export type MutationBookAppointmentArgs = {
 
 export type MutationBookmarkDoctorArgs = {
   doctorId: Scalars['Int']['input'];
+};
+
+
+export type MutationCreateDoctorAvailabilityBlockArgs = {
+  input: CreateDoctorAvailabilityBlockInput;
 };
 
 
@@ -274,8 +324,12 @@ export type Query = {
   bookmarkedDoctors?: Maybe<Array<Maybe<BookmarkedDoctorType>>>;
   counties?: Maybe<Array<Maybe<CountyType>>>;
   countries?: Maybe<Array<Maybe<CountryType>>>;
+  doctor?: Maybe<DoctorType>;
+  /** Fetch all future availability slots for a specific doctor */
+  doctorAvailabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
   doctors?: Maybe<Array<Maybe<DoctorType>>>;
   hello?: Maybe<Scalars['String']['output']>;
+  insuarances?: Maybe<Array<Maybe<InsuaranceType>>>;
   me?: Maybe<UserType>;
   patients?: Maybe<Array<Maybe<PatientType>>>;
   specialties?: Maybe<Array<Maybe<SpecialtyType>>>;
@@ -284,6 +338,16 @@ export type Query = {
 
 export type QueryCountiesArgs = {
   countryId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryDoctorArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
+export type QueryDoctorAvailabilitiesArgs = {
+  id: Scalars['Int']['input'];
 };
 
 export type Refresh = {
@@ -329,6 +393,7 @@ export type Subscription = {
 
 
 export type SubscriptionRetrieveNewNotificationsArgs = {
+  jwtToken: Scalars['String']['input'];
   patientId: Scalars['Int']['input'];
 };
 
@@ -414,6 +479,13 @@ export type VerifyTokenMutationVariables = Exact<{
 
 export type VerifyTokenMutation = { __typename?: 'Mutation', verifyToken?: { __typename?: 'Verify', payload: any } | null };
 
+export type BookAppointmentMutationVariables = Exact<{
+  bookingArgs: AppointmentInput;
+}>;
+
+
+export type BookAppointmentMutation = { __typename?: 'Mutation', bookAppointment?: { __typename?: 'BookAppointment', appointment?: { __typename?: 'AppointmentType', id: string, rastucId: string, startTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null } | null };
+
 export type BookmarkDoctorMutationVariables = Exact<{
   doctorId: Scalars['Int']['input'];
 }>;
@@ -430,6 +502,20 @@ export type GetDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }> } | null> | null };
+
+export type GetDoctorQueryVariables = Exact<{
+  id: Scalars['Int']['input'];
+}>;
+
+
+export type GetDoctorQuery = { __typename?: 'Query', doctor?: { __typename?: 'DoctorType', id: string, title: string, bio: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, user: { __typename?: 'UserType', phoneNumber?: string | null, email?: string | null }, availabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null } | null };
+
+export type GetDoctorAvailabilitiesQueryVariables = Exact<{
+  doctorId: Scalars['Int']['input'];
+}>;
+
+
+export type GetDoctorAvailabilitiesQuery = { __typename?: 'Query', doctorAvailabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null };
 
 export type GetMyAppointmentsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -453,12 +539,13 @@ export type UnbookmarkDoctorMutationVariables = Exact<{
 
 export type UnbookmarkDoctorMutation = { __typename?: 'Mutation', unbookmarkDoctor?: { __typename?: 'UnbookmarkDoctor', success?: boolean | null } | null };
 
-export type OnNewNotificationSubscriptionVariables = Exact<{
+export type RetrieveNotificationsSubscriptionVariables = Exact<{
   patientId: Scalars['Int']['input'];
+  jwtToken: Scalars['String']['input'];
 }>;
 
 
-export type OnNewNotificationSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
+export type RetrieveNotificationsSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
 
 
 export const CreatePatientProfileDocument = gql`
@@ -784,6 +871,53 @@ export function useVerifyTokenMutation(baseOptions?: Apollo.MutationHookOptions<
 export type VerifyTokenMutationHookResult = ReturnType<typeof useVerifyTokenMutation>;
 export type VerifyTokenMutationResult = Apollo.MutationResult<VerifyTokenMutation>;
 export type VerifyTokenMutationOptions = Apollo.BaseMutationOptions<VerifyTokenMutation, VerifyTokenMutationVariables>;
+export const BookAppointmentDocument = gql`
+    mutation BookAppointment($bookingArgs: AppointmentInput!) {
+  bookAppointment(bookingArgs: $bookingArgs) {
+    appointment {
+      id
+      rastucId
+      startTime
+      encounterMode
+      cost
+      doctor {
+        id
+        fullName
+        title
+        primarySpecialty {
+          name
+        }
+      }
+    }
+  }
+}
+    `;
+export type BookAppointmentMutationFn = Apollo.MutationFunction<BookAppointmentMutation, BookAppointmentMutationVariables>;
+
+/**
+ * __useBookAppointmentMutation__
+ *
+ * To run a mutation, you first call `useBookAppointmentMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useBookAppointmentMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [bookAppointmentMutation, { data, loading, error }] = useBookAppointmentMutation({
+ *   variables: {
+ *      bookingArgs: // value for 'bookingArgs'
+ *   },
+ * });
+ */
+export function useBookAppointmentMutation(baseOptions?: Apollo.MutationHookOptions<BookAppointmentMutation, BookAppointmentMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<BookAppointmentMutation, BookAppointmentMutationVariables>(BookAppointmentDocument, options);
+      }
+export type BookAppointmentMutationHookResult = ReturnType<typeof useBookAppointmentMutation>;
+export type BookAppointmentMutationResult = Apollo.MutationResult<BookAppointmentMutation>;
+export type BookAppointmentMutationOptions = Apollo.BaseMutationOptions<BookAppointmentMutation, BookAppointmentMutationVariables>;
 export const BookmarkDoctorDocument = gql`
     mutation BookmarkDoctor($doctorId: Int!) {
   bookmarkDoctor(doctorId: $doctorId) {
@@ -929,6 +1063,130 @@ export type GetDoctorsQueryHookResult = ReturnType<typeof useGetDoctorsQuery>;
 export type GetDoctorsLazyQueryHookResult = ReturnType<typeof useGetDoctorsLazyQuery>;
 export type GetDoctorsSuspenseQueryHookResult = ReturnType<typeof useGetDoctorsSuspenseQuery>;
 export type GetDoctorsQueryResult = Apollo.QueryResult<GetDoctorsQuery, GetDoctorsQueryVariables>;
+export const GetDoctorDocument = gql`
+    query GetDoctor($id: Int!) {
+  doctor(id: $id) {
+    id
+    title
+    bio
+    firstName
+    county {
+      name
+      country {
+        name
+      }
+    }
+    lastName
+    fullName
+    profilePictureUrl
+    takesPrepaidPayment
+    takesPostpaidPayment
+    primarySpecialty {
+      id
+      name
+    }
+    subSpecialties {
+      id
+      name
+    }
+    teleconsultPrice
+    clinicVisitPrice
+    homecarePrice
+    insuarance {
+      id
+      name
+    }
+    user {
+      phoneNumber
+      email
+    }
+    availabilities {
+      id
+      startTime
+      endTime
+      isRecurring
+      isBooked
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetDoctorQuery__
+ *
+ * To run a query within a React component, call `useGetDoctorQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetDoctorQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetDoctorQuery({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useGetDoctorQuery(baseOptions: Apollo.QueryHookOptions<GetDoctorQuery, GetDoctorQueryVariables> & ({ variables: GetDoctorQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetDoctorQuery, GetDoctorQueryVariables>(GetDoctorDocument, options);
+      }
+export function useGetDoctorLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetDoctorQuery, GetDoctorQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetDoctorQuery, GetDoctorQueryVariables>(GetDoctorDocument, options);
+        }
+export function useGetDoctorSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetDoctorQuery, GetDoctorQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetDoctorQuery, GetDoctorQueryVariables>(GetDoctorDocument, options);
+        }
+export type GetDoctorQueryHookResult = ReturnType<typeof useGetDoctorQuery>;
+export type GetDoctorLazyQueryHookResult = ReturnType<typeof useGetDoctorLazyQuery>;
+export type GetDoctorSuspenseQueryHookResult = ReturnType<typeof useGetDoctorSuspenseQuery>;
+export type GetDoctorQueryResult = Apollo.QueryResult<GetDoctorQuery, GetDoctorQueryVariables>;
+export const GetDoctorAvailabilitiesDocument = gql`
+    query GetDoctorAvailabilities($doctorId: Int!) {
+  doctorAvailabilities(id: $doctorId) {
+    id
+    startTime
+    endTime
+    isRecurring
+    isBooked
+  }
+}
+    `;
+
+/**
+ * __useGetDoctorAvailabilitiesQuery__
+ *
+ * To run a query within a React component, call `useGetDoctorAvailabilitiesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetDoctorAvailabilitiesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetDoctorAvailabilitiesQuery({
+ *   variables: {
+ *      doctorId: // value for 'doctorId'
+ *   },
+ * });
+ */
+export function useGetDoctorAvailabilitiesQuery(baseOptions: Apollo.QueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables> & ({ variables: GetDoctorAvailabilitiesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+      }
+export function useGetDoctorAvailabilitiesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+        }
+export function useGetDoctorAvailabilitiesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>(GetDoctorAvailabilitiesDocument, options);
+        }
+export type GetDoctorAvailabilitiesQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesQuery>;
+export type GetDoctorAvailabilitiesLazyQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesLazyQuery>;
+export type GetDoctorAvailabilitiesSuspenseQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesSuspenseQuery>;
+export type GetDoctorAvailabilitiesQueryResult = Apollo.QueryResult<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>;
 export const GetMyAppointmentsDocument = gql`
     query GetMyAppointments {
   appointments {
@@ -1117,9 +1375,9 @@ export function useUnbookmarkDoctorMutation(baseOptions?: Apollo.MutationHookOpt
 export type UnbookmarkDoctorMutationHookResult = ReturnType<typeof useUnbookmarkDoctorMutation>;
 export type UnbookmarkDoctorMutationResult = Apollo.MutationResult<UnbookmarkDoctorMutation>;
 export type UnbookmarkDoctorMutationOptions = Apollo.BaseMutationOptions<UnbookmarkDoctorMutation, UnbookmarkDoctorMutationVariables>;
-export const OnNewNotificationDocument = gql`
-    subscription OnNewNotification($patientId: Int!) {
-  retrieveNewNotifications(patientId: $patientId) {
+export const RetrieveNotificationsDocument = gql`
+    subscription RetrieveNotifications($patientId: Int!, $jwtToken: String!) {
+  retrieveNewNotifications(patientId: $patientId, jwtToken: $jwtToken) {
     id
     title
     description
@@ -1130,24 +1388,25 @@ export const OnNewNotificationDocument = gql`
     `;
 
 /**
- * __useOnNewNotificationSubscription__
+ * __useRetrieveNotificationsSubscription__
  *
- * To run a query within a React component, call `useOnNewNotificationSubscription` and pass it any options that fit your needs.
- * When your component renders, `useOnNewNotificationSubscription` returns an object from Apollo Client that contains loading, error, and data properties
+ * To run a query within a React component, call `useRetrieveNotificationsSubscription` and pass it any options that fit your needs.
+ * When your component renders, `useRetrieveNotificationsSubscription` returns an object from Apollo Client that contains loading, error, and data properties
  * you can use to render your UI.
  *
  * @param baseOptions options that will be passed into the subscription, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
  *
  * @example
- * const { data, loading, error } = useOnNewNotificationSubscription({
+ * const { data, loading, error } = useRetrieveNotificationsSubscription({
  *   variables: {
  *      patientId: // value for 'patientId'
+ *      jwtToken: // value for 'jwtToken'
  *   },
  * });
  */
-export function useOnNewNotificationSubscription(baseOptions: Apollo.SubscriptionHookOptions<OnNewNotificationSubscription, OnNewNotificationSubscriptionVariables> & ({ variables: OnNewNotificationSubscriptionVariables; skip?: boolean; } | { skip: boolean; }) ) {
+export function useRetrieveNotificationsSubscription(baseOptions: Apollo.SubscriptionHookOptions<RetrieveNotificationsSubscription, RetrieveNotificationsSubscriptionVariables> & ({ variables: RetrieveNotificationsSubscriptionVariables; skip?: boolean; } | { skip: boolean; }) ) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useSubscription<OnNewNotificationSubscription, OnNewNotificationSubscriptionVariables>(OnNewNotificationDocument, options);
+        return Apollo.useSubscription<RetrieveNotificationsSubscription, RetrieveNotificationsSubscriptionVariables>(RetrieveNotificationsDocument, options);
       }
-export type OnNewNotificationSubscriptionHookResult = ReturnType<typeof useOnNewNotificationSubscription>;
-export type OnNewNotificationSubscriptionResult = Apollo.SubscriptionResult<OnNewNotificationSubscription>;
+export type RetrieveNotificationsSubscriptionHookResult = ReturnType<typeof useRetrieveNotificationsSubscription>;
+export type RetrieveNotificationsSubscriptionResult = Apollo.SubscriptionResult<RetrieveNotificationsSubscription>;

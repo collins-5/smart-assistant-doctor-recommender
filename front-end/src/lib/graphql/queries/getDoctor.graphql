@@ -1,0 +1,47 @@
+# src/graphql/queries/getDoctor.graphql
+
+query GetDoctor($id: Int!) {
+  doctor(id: $id) {
+    id
+    title
+    bio
+    firstName
+    county {
+      name
+      country {
+        name
+      }
+    }
+    lastName
+    fullName
+    profilePictureUrl
+    takesPrepaidPayment
+    takesPostpaidPayment
+    primarySpecialty {
+      id
+      name
+    }
+    subSpecialties {
+      id
+      name
+    }
+    teleconsultPrice
+    clinicVisitPrice
+    homecarePrice
+    insuarance {
+      id
+      name
+    }
+    user {
+      phoneNumber
+      email
+    }
+    availabilities {
+      id
+      startTime
+      endTime
+      isRecurring
+      isBooked
+    }
+  }
+}
