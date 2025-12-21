@@ -36,6 +36,16 @@ export default function TabsLayout() {
             ),
           }}
         />
+         <Tabs.Screen
+          name="chat"
+          options={{
+            tabBarLabel: "SDR-Ai",
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="robot" size={size} color={color} />
+            ),
+          }}
+        />
+
         <Tabs.Screen
           name="doctors/[id]"
           options={{
@@ -60,7 +70,7 @@ export default function TabsLayout() {
           options={{
             title: "Appointments",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="calendar" size={size} color={color} />
+              <Icon name="calendar" size={size} color={color} />
             ),
           }}
         />
@@ -69,7 +79,7 @@ export default function TabsLayout() {
           options={{
             tabBarLabel: "profile",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person" size={size} color={color} />
+              <Icon name="account" size={size} color={color} />
             ),
           }}
         />
@@ -79,7 +89,7 @@ export default function TabsLayout() {
             href: null,
             tabBarLabel: "Notifications",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="musical-notes-sharp" size={size} color={color} />
+              <Icon name="bell" size={size} color={color} />
             ),
           }}
         />

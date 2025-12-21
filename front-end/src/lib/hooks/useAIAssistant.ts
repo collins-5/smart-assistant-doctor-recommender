@@ -1,9 +1,12 @@
-// src/hooks/useAIAssistant.ts
 
 import { useState, useCallback } from "react";
 
-// Replace with your actual Gemini API key (or use env var in production)
-const GEMINI_API_KEY = "AIzaSyD5VJDe9WhAN1GnJ28Q1yVy9xFgZFynyvo";
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+
+// Optional safety check
+if (!GEMINI_API_KEY) {
+    console.warn('⚠️ GEMINI_API_KEY is missing from .env!');
+}
 
 const SYSTEM_PROMPT = `
 You are a friendly, professional Health Assistant in a telemedicine app.
@@ -118,7 +121,7 @@ export const useAIAssistant = () => {
                 setIsLoading(false);
             }
         },
-        [messages] // Only dependency needed
+        [messages] 
     );
 
     return {

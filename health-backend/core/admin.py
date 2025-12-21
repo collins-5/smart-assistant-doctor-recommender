@@ -1,4 +1,4 @@
-# core/admin.py — FINAL CORRECTED VERSION (No more validation errors on save)
+# core/admin.py — FINAL CORRECTED & WORKING VERSION
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -15,7 +15,7 @@ from .models import (
     Country, County, Insuarance, DoctorAvailability,
 )
 
-# Optional: cleaner sidebar
+# Optional: cleaner sidebar (remove Groups)
 admin.site.unregister(Group)
 
 
@@ -110,26 +110,35 @@ class DoctorAdmin(admin.ModelAdmin):
     get_email.short_description = 'Email'
 
 
-# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN ======================
+# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN (FIXED) ======================
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'is_booked_status')
+    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'booked_status_display')
     list_filter = ('is_recurring', 'start_time', 'doctor')
     search_fields = ('doctor__full_name', 'doctor__user__email')
     readonly_fields = ('end_time',)
     date_hierarchy = 'start_time'
     ordering = ('-start_time',)
 
-    def is_booked_status(self, obj):
+    def booked_status_display(self, obj):
         booked = Appointment.objects.filter(
             doctor=obj.doctor,
             start_time__lt=obj.end_time,
             end_time__gt=obj.start_time,
         ).exists()
+
         color = "red" if booked else "green"
         status = "Booked" if booked else "Available"
-        return format_html(f'<span style="color:{color}; font-weight:bold;">● {status}</span>')
-    is_booked_status.short_description = "Status"
+
+        return format_html(
+            '<span style="color:{}; font-weight:bold;">● {}</span>',
+            color,
+            status
+        )
+
+    booked_status_display.short_description = "Status"
+    # Optional: prevent sorting on this virtual field
+    # booked_status_display.admin_order_field = None
 
 
 # ====================== OTHER ADMINS ======================

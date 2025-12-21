@@ -120,6 +120,8 @@ export type IconNames = Extract<
   | "plus"
   | "camera"
   | "upload"
+  | "account"
+  | "robot"
 >;
 
 type ImageIconProps = {

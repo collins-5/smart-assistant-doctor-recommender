@@ -11,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 import { format } from "date-fns";
-import { FlashList } from "@shopify/flash-list"; // ← High-performance list
+import { FlashList } from "@shopify/flash-list"; 
 
 import { useAIAssistant, ChatMessage } from "~/lib/hooks/useAIAssistant";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper"; // your wrapper
