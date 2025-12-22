@@ -1,3 +1,5 @@
+# core/schema.py
+
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -15,7 +17,8 @@ from decimal import Decimal
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
     PatientDoctorBookmark, Notification, Country, County,
-    Insuarance, DoctorAvailability
+    Insuarance, DoctorAvailability,
+    AIChatMessage,  # ← NEW: Make sure this model exists in models.py
 )
 
 
@@ -133,6 +136,13 @@ class BookmarkedDoctorType(DoctorType):
         fields = "__all__"
 
 
+# ==================== NEW: AI CHAT MESSAGE TYPE ====================
+class AIChatMessageType(DjangoObjectType):
+    class Meta:
+        model = AIChatMessage
+        fields = ("id", "text", "is_from_user", "created_at")
+
+
 # ==================== INPUTS ====================
 class AppointmentInput(graphene.InputObjectType):
     doctor_id = graphene.Int(required=True)
@@ -165,7 +175,7 @@ class EditProfileInput(graphene.InputObjectType):
 
 
 class CreateDoctorAvailabilityBlockInput(graphene.InputObjectType):
-    doctor_id = graphene.Int()  # Optional for regular doctors, required for staff
+    doctor_id = graphene.Int()
     start_time = graphene.DateTime(required=True)
     end_time = graphene.DateTime(required=True)
     is_recurring = graphene.Boolean(default_value=False)
@@ -545,7 +555,6 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
     def mutate(root, info, input):
         user = info.context.user
 
-        # Determine the target doctor
         if user.is_staff:
             if not input.doctor_id:
                 return CreateDoctorAvailabilityBlock(success=False, error="Staff users must provide doctor_id")
@@ -554,13 +563,11 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
             except Doctor.DoesNotExist:
                 return CreateDoctorAvailabilityBlock(success=False, error="Specified doctor not found")
         else:
-            # Non-staff: must be a doctor themselves
             try:
                 doctor = user.doctor
             except AttributeError:
                 return CreateDoctorAvailabilityBlock(success=False, error="Only doctors or staff can create availability")
 
-        # Basic validation
         if input.start_time >= input.end_time:
             return CreateDoctorAvailabilityBlock(success=False, error="Start time must be before end time")
 
@@ -573,7 +580,6 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
         while current_start + timedelta(minutes=30) <= input.end_time:
             proposed_end = current_start + timedelta(minutes=30)
 
-            # Prevent overlaps with existing availability
             if DoctorAvailability.objects.filter(
                 doctor=doctor,
                 start_time__lt=proposed_end,
@@ -600,6 +606,35 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
         )
 
 
+# ==================== NEW: AI CHAT MUTATION ====================
+class SendAIChatMessage(graphene.Mutation):
+    class Arguments:
+        text = graphene.String(required=True)
+        is_from_user = graphene.Boolean(default_value=True)
+
+    message = graphene.Field(AIChatMessageType)
+    success = graphene.Boolean()
+    error = graphene.String()
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, text, is_from_user=True):
+        user = info.context.user
+
+        if not hasattr(user, "patient"):
+            return SendAIChatMessage(success=False, error="Patient profile required")
+
+        patient = user.patient
+
+        message = AIChatMessage.objects.create(
+            patient=patient,
+            text=text.strip(),
+            is_from_user=is_from_user,
+        )
+
+        return SendAIChatMessage(message=message, success=True, error=None)
+
+
 # ==================== QUERY ====================
 class Query(graphene.ObjectType):
     hello = graphene.String(default_value="Health Backend API is LIVE!")
@@ -618,6 +653,12 @@ class Query(graphene.ObjectType):
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
     countries = graphene.List(CountryType)
     counties = graphene.List(CountyType, country_id=graphene.Int())
+
+    # NEW: AI Chat History
+    ai_chat_messages = graphene.List(
+        AIChatMessageType,
+        description="Retrieve all AI chat messages for the current patient"
+    )
 
     def resolve_me(self, info):
         return info.context.user if info.context.user.is_authenticated else None
@@ -674,6 +715,14 @@ class Query(graphene.ObjectType):
             return County.objects.filter(country_id=country_id)
         return County.objects.all()
 
+    # NEW: Resolve AI chat messages
+    @login_required
+    def resolve_ai_chat_messages(self, info):
+        user = info.context.user
+        if not hasattr(user, "patient"):
+            return AIChatMessage.objects.none()
+        return user.patient.ai_chat_messages.all().order_by('created_at')
+
 
 # ==================== SUBSCRIPTION ====================
 class Subscription(graphene.ObjectType):
@@ -708,6 +757,9 @@ class Mutation(graphene.ObjectType):
     upload_profile_picture = UploadProfilePicture.Field()
     remove_profile_picture = RemoveProfilePicture.Field()
     create_doctor_availability_block = CreateDoctorAvailabilityBlock.Field()
+
+    # NEW
+    send_ai_chat_message = SendAIChatMessage.Field()
 
 
 # ==================== FINAL SCHEMA ====================

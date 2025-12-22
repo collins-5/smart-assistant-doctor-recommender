@@ -22,6 +22,15 @@ export type Scalars = {
   Upload: { input: any; output: any; }
 };
 
+export type AiChatMessageType = {
+  __typename?: 'AIChatMessageType';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** True if message is from the patient, False if from AI */
+  isFromUser: Scalars['Boolean']['output'];
+  text: Scalars['String']['output'];
+};
+
 export type AppointmentInput = {
   doctorId: Scalars['Int']['input'];
   encounterMode: Scalars['String']['input'];
@@ -209,6 +218,7 @@ export type Mutation = {
   editProfile?: Maybe<EditProfile>;
   refreshToken?: Maybe<Refresh>;
   removeProfilePicture?: Maybe<RemoveProfilePicture>;
+  sendAiChatMessage?: Maybe<SendAiChatMessage>;
   signIn?: Maybe<SignIn>;
   signUp?: Maybe<SignUp>;
   /** Obtain JSON Web Token mutation */
@@ -246,6 +256,12 @@ export type MutationEditProfileArgs = {
 
 export type MutationRefreshTokenArgs = {
   token?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationSendAiChatMessageArgs = {
+  isFromUser?: InputMaybe<Scalars['Boolean']['input']>;
+  text: Scalars['String']['input'];
 };
 
 
@@ -302,6 +318,7 @@ export type ObtainJsonWebToken = {
 
 export type PatientType = {
   __typename?: 'PatientType';
+  aiChatMessages: Array<AiChatMessageType>;
   appointmentSet: Array<AppointmentType>;
   country?: Maybe<CountryType>;
   county?: Maybe<CountyType>;
@@ -320,6 +337,8 @@ export type PatientType = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Retrieve all AI chat messages for the current patient */
+  aiChatMessages?: Maybe<Array<Maybe<AiChatMessageType>>>;
   appointments?: Maybe<Array<Maybe<AppointmentType>>>;
   bookmarkedDoctors?: Maybe<Array<Maybe<BookmarkedDoctorType>>>;
   counties?: Maybe<Array<Maybe<CountyType>>>;
@@ -361,6 +380,13 @@ export type RemoveProfilePicture = {
   __typename?: 'RemoveProfilePicture';
   error?: Maybe<Scalars['String']['output']>;
   patient?: Maybe<PatientType>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type SendAiChatMessage = {
+  __typename?: 'SendAIChatMessage';
+  error?: Maybe<Scalars['String']['output']>;
+  message?: Maybe<AiChatMessageType>;
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
@@ -428,6 +454,14 @@ export type Verify = {
   payload: Scalars['GenericScalar']['output'];
 };
 
+export type SendAiChatMessageMutationVariables = Exact<{
+  text: Scalars['String']['input'];
+  isFromUser?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type SendAiChatMessageMutation = { __typename?: 'Mutation', sendAiChatMessage?: { __typename?: 'SendAIChatMessage', success?: boolean | null, error?: string | null, message?: { __typename?: 'AIChatMessageType', id: string, text: string, isFromUser: boolean, createdAt: any } | null } | null };
+
 export type CreatePatientProfileMutationVariables = Exact<{
   input: CreatePatientProfileInput;
 }>;
@@ -485,6 +519,11 @@ export type BookAppointmentMutationVariables = Exact<{
 
 
 export type BookAppointmentMutation = { __typename?: 'Mutation', bookAppointment?: { __typename?: 'BookAppointment', appointment?: { __typename?: 'AppointmentType', id: string, rastucId: string, startTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null } | null };
+
+export type GetAiChatMessagesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAiChatMessagesQuery = { __typename?: 'Query', aiChatMessages?: Array<{ __typename?: 'AIChatMessageType', id: string, text: string, isFromUser: boolean, createdAt: any } | null> | null };
 
 export type BookmarkDoctorMutationVariables = Exact<{
   doctorId: Scalars['Int']['input'];
@@ -548,6 +587,47 @@ export type RetrieveNotificationsSubscriptionVariables = Exact<{
 export type RetrieveNotificationsSubscription = { __typename?: 'Subscription', retrieveNewNotifications?: { __typename?: 'NotificationType', id: number, title: string, description: string, createdAt: any, isRead: boolean } | null };
 
 
+export const SendAiChatMessageDocument = gql`
+    mutation SendAIChatMessage($text: String!, $isFromUser: Boolean) {
+  sendAiChatMessage(text: $text, isFromUser: $isFromUser) {
+    message {
+      id
+      text
+      isFromUser
+      createdAt
+    }
+    success
+    error
+  }
+}
+    `;
+export type SendAiChatMessageMutationFn = Apollo.MutationFunction<SendAiChatMessageMutation, SendAiChatMessageMutationVariables>;
+
+/**
+ * __useSendAiChatMessageMutation__
+ *
+ * To run a mutation, you first call `useSendAiChatMessageMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSendAiChatMessageMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [sendAiChatMessageMutation, { data, loading, error }] = useSendAiChatMessageMutation({
+ *   variables: {
+ *      text: // value for 'text'
+ *      isFromUser: // value for 'isFromUser'
+ *   },
+ * });
+ */
+export function useSendAiChatMessageMutation(baseOptions?: Apollo.MutationHookOptions<SendAiChatMessageMutation, SendAiChatMessageMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SendAiChatMessageMutation, SendAiChatMessageMutationVariables>(SendAiChatMessageDocument, options);
+      }
+export type SendAiChatMessageMutationHookResult = ReturnType<typeof useSendAiChatMessageMutation>;
+export type SendAiChatMessageMutationResult = Apollo.MutationResult<SendAiChatMessageMutation>;
+export type SendAiChatMessageMutationOptions = Apollo.BaseMutationOptions<SendAiChatMessageMutation, SendAiChatMessageMutationVariables>;
 export const CreatePatientProfileDocument = gql`
     mutation CreatePatientProfile($input: CreatePatientProfileInput!) {
   createPatientProfile(input: $input) {
@@ -918,6 +998,48 @@ export function useBookAppointmentMutation(baseOptions?: Apollo.MutationHookOpti
 export type BookAppointmentMutationHookResult = ReturnType<typeof useBookAppointmentMutation>;
 export type BookAppointmentMutationResult = Apollo.MutationResult<BookAppointmentMutation>;
 export type BookAppointmentMutationOptions = Apollo.BaseMutationOptions<BookAppointmentMutation, BookAppointmentMutationVariables>;
+export const GetAiChatMessagesDocument = gql`
+    query GetAIChatMessages {
+  aiChatMessages {
+    id
+    text
+    isFromUser
+    createdAt
+  }
+}
+    `;
+
+/**
+ * __useGetAiChatMessagesQuery__
+ *
+ * To run a query within a React component, call `useGetAiChatMessagesQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAiChatMessagesQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetAiChatMessagesQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetAiChatMessagesQuery(baseOptions?: Apollo.QueryHookOptions<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>(GetAiChatMessagesDocument, options);
+      }
+export function useGetAiChatMessagesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>(GetAiChatMessagesDocument, options);
+        }
+export function useGetAiChatMessagesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>(GetAiChatMessagesDocument, options);
+        }
+export type GetAiChatMessagesQueryHookResult = ReturnType<typeof useGetAiChatMessagesQuery>;
+export type GetAiChatMessagesLazyQueryHookResult = ReturnType<typeof useGetAiChatMessagesLazyQuery>;
+export type GetAiChatMessagesSuspenseQueryHookResult = ReturnType<typeof useGetAiChatMessagesSuspenseQuery>;
+export type GetAiChatMessagesQueryResult = Apollo.QueryResult<GetAiChatMessagesQuery, GetAiChatMessagesQueryVariables>;
 export const BookmarkDoctorDocument = gql`
     mutation BookmarkDoctor($doctorId: Int!) {
   bookmarkDoctor(doctorId: $doctorId) {

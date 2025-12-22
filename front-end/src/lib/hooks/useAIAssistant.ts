@@ -1,33 +1,14 @@
+// src/hooks/useAIAssistant.ts
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useAIChatMessages, useSendAIChatMessage } from "./useAIChatMessages";
+import { SYSTEM_PROMPT } from "./ai-prompt";
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
 
-// Optional safety check
 if (!GEMINI_API_KEY) {
-    console.warn('⚠️ GEMINI_API_KEY is missing from .env!');
+    console.warn("⚠️ GEMINI_API_KEY is missing from .env!");
 }
-
-const SYSTEM_PROMPT = `
-You are a friendly, professional Health Assistant in a telemedicine app.
-Your role is to:
-- Listen empathetically to the user's symptoms
-- Ask clarifying questions when needed
-- Provide general, non-diagnostic information
-- Suggest safe home care tips
-- Always recommend consulting a doctor for serious or persistent symptoms
-- Offer to help book an appointment
-
-RULES:
-- NEVER diagnose conditions
-- NEVER prescribe medication
-- NEVER give urgent medical advice without directing to emergency services
-- Always include: "I'm not a doctor — this is general information only."
-- Use simple, warm, and clear language
-- Keep responses concise and easy to read on mobile
-
-When appropriate, ask: "Would you like help booking an appointment?"
-`;
 
 export type ChatMessage = {
     id: string;
@@ -36,26 +17,46 @@ export type ChatMessage = {
     createdAt: Date;
 };
 
-export const useAIAssistant = () => {
-    const [messages, setMessages] = useState<ChatMessage[]>(() => [
-        {
-            id: "greeting-1",
-            text: "Hi! I'm your Health Assistant. 👋\n\nHow are you feeling today? Please describe any symptoms you're experiencing, and I'll help guide you with general information.\n\nRemember: I'm not a doctor — this is for informational purposes only.",
-            isBot: true,
-            createdAt: new Date(),
-        },
-    ]);
+const WELCOME_MESSAGE: ChatMessage = {
+    id: "greeting-1",
+    text:
+        "Hi! I'm your Health Assistant. 👋\n\nHow are you feeling today? Please describe any symptoms you're experiencing, and I'll help guide you with general information.\n\nRemember: I'm not a doctor — this is for informational purposes only.",
+    isBot: true,
+    createdAt: new Date(),
+};
 
+export const useAIAssistant = () => {
     const [inputText, setInputText] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+    const { messages: backendMessages, loading: loadingHistory, refetch } = useAIChatMessages();
+    const { sendMessage: saveMessageToBackend } = useSendAIChatMessage();
+
+    // Sync backend messages → local messages when data changes
+    useEffect(() => {
+        if (backendMessages.length > 0) {
+            const formatted = backendMessages.map((msg : any) => ({
+                id: msg.id.toString(),
+                text: msg.text,
+                isBot: !msg.isFromUser,
+                createdAt: new Date(msg.createdAt),
+            }));
+            setMessages(formatted);
+        } else if (!loadingHistory) {
+            setMessages([WELCOME_MESSAGE]);
+        }
+    }, [backendMessages, loadingHistory]);
 
     const sendMessage = useCallback(
         async (userText: string) => {
             if (!userText.trim()) return;
 
+            const trimmedText = userText.trim();
+
             const userMessage: ChatMessage = {
                 id: Date.now().toString(),
-                text: userText.trim(),
+                text: trimmedText,
                 isBot: false,
                 createdAt: new Date(),
             };
@@ -65,12 +66,14 @@ export const useAIAssistant = () => {
             setIsLoading(true);
 
             try {
+                await saveMessageToBackend(trimmedText, true);
+
                 const contents = [
                     { role: "model", parts: [{ text: SYSTEM_PROMPT }] },
                     ...messages.flatMap((msg) => [
                         { role: msg.isBot ? "model" : "user", parts: [{ text: msg.text }] },
                     ]),
-                    { role: "user", parts: [{ text: userText }] },
+                    { role: "user", parts: [{ text: trimmedText }] },
                 ];
 
                 const res = await fetch(
@@ -80,38 +83,60 @@ export const useAIAssistant = () => {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             contents,
-                            generationConfig: {
-                                temperature: 0.7,
-                                maxOutputTokens: 800,
-                            },
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
                         }),
                     }
                 );
 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    throw new Error(`Gemini API error: ${res.status} – ${errorText}`);
+                    throw new Error(`Gemini API error: ${res.status} — ${errorText}`);
                 }
 
                 const data = await res.json();
-                const botText =
-                    data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                let botText =
+                    data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
                     "I'm having trouble responding right now. Please try again.";
 
-                const botMessage: ChatMessage = {
+                // === TOOL INTERCEPTION (Future-Proof) ===
+                let processedText = botText;
+
+                if (processedText.includes("[TOOL:SHOW_DOCTORS]")) {
+                    processedText = processedText.replace(
+                        /\[TOOL:SHOW_DOCTORS\](.*?)\[\/TOOL\]/s,
+                        "$1\n\n<DOCTORS_LIST/>"
+                    );
+                }
+
+                if (processedText.includes("[TOOL:SHOW_SPECIALTIES]")) {
+                    processedText = processedText.replace(
+                        /\[TOOL:SHOW_SPECIALTIES\](.*?)\[\/TOOL\]/s,
+                        "$1\n\n<SPECIALTIES_LIST/>"
+                    );
+                }
+
+                if (processedText.includes("[TOOL:BOOK_APPOINTMENT]")) {
+                    processedText = processedText.replace(
+                        /\[TOOL:BOOK_APPOINTMENT\](.*?)\[\/TOOL\]/s,
+                        "$1\n\n<BOOK_APPOINTMENT_BUTTON/>"
+                    );
+                }
+
+                const aiMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),
-                    text: botText.trim(),
+                    text: processedText,
                     isBot: true,
                     createdAt: new Date(),
                 };
 
-                setMessages((prev) => [...prev, botMessage]);
+                setMessages((prev) => [...prev, aiMessage]);
+                await saveMessageToBackend(processedText, false);
             } catch (error: any) {
                 console.error("AI Assistant Error:", error);
 
                 const errorMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),
-                    text: "Sorry, I'm having connection issues. Please try again in a moment.",
+                    text: "Sorry, I'm having trouble connecting. Please try again.",
                     isBot: true,
                     createdAt: new Date(),
                 };
@@ -121,14 +146,17 @@ export const useAIAssistant = () => {
                 setIsLoading(false);
             }
         },
-        [messages] 
+        [messages, saveMessageToBackend]
     );
+
+    const refreshChat = useCallback(() => refetch(), [refetch]);
 
     return {
         messages,
         inputText,
         setInputText,
-        isLoading,
+        isLoading: isLoading || loadingHistory,
         sendMessage,
+        refreshChat,
     };
 };

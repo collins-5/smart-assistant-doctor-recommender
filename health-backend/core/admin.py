@@ -1,4 +1,4 @@
-# core/admin.py — FINAL CORRECTED & WORKING VERSION
+# core/admin.py — FINAL CORRECTED & FULLY WORKING VERSION (with AIChatMessage fixed)
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -13,6 +13,7 @@ from .models import (
     User, Patient, Doctor, Specialty, Appointment,
     Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
     Country, County, Insuarance, DoctorAvailability,
+    AIChatMessage,  # ← Added
 )
 
 # Optional: cleaner sidebar (remove Groups)
@@ -137,8 +138,39 @@ class DoctorAvailabilityAdmin(admin.ModelAdmin):
         )
 
     booked_status_display.short_description = "Status"
-    # Optional: prevent sorting on this virtual field
-    # booked_status_display.admin_order_field = None
+
+
+# ====================== AI CHAT MESSAGE ADMIN (FULLY FIXED) ======================
+# ====================== AI CHAT MESSAGE ADMIN (FINAL FIXED VERSION) ======================
+@admin.register(AIChatMessage)
+class AIChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'sender_display', 'short_text', 'created_at')
+    list_filter = ('is_from_user', 'created_at', 'patient')
+    search_fields = (
+        'patient__user__email',
+        'patient__first_name',
+        'patient__last_name',
+        'text',
+    )
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('patient',)
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)
+
+    def sender_display(self, obj):
+        if obj.is_from_user:
+            return format_html('<strong style="color:#1976d2;">{}</strong>', 'Patient')
+        return format_html('<strong style="color:#43a047;">{}</strong>', 'AI Assistant')
+    
+    sender_display.short_description = "Sender"
+    sender_display.admin_order_field = 'is_from_user'
+
+    def short_text(self, obj):
+        text = obj.text.strip()
+        if len(text) > 80:
+            return text[:77] + "..."
+        return text
+    short_text.short_description = "Message"
 
 
 # ====================== OTHER ADMINS ======================
