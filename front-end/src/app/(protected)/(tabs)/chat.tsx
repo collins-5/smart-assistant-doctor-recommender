@@ -21,8 +21,6 @@ import BookAppointmentButton from "~/components/chat/BookAppointmentButton";
 import DoctorsCarousel from "~/components/chat/doctors-carousel";
 import SpecialtiesGrid from "~/components/chat/specialties-grid";
 
-// Import the tool components
-
 
 const Chat = () => {
   const { messages, inputText, setInputText, isLoading, sendMessage } =
@@ -39,12 +37,13 @@ const Chat = () => {
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isBot = item.isBot;
 
-    // Detect tool markers in AI response
+    // Detect if this message contains any dynamic cards
     const hasDoctors = item.text.includes("<DOCTORS_LIST/>");
     const hasSpecialties = item.text.includes("<SPECIALTIES_LIST/>");
     const hasBookButton = item.text.includes("<BOOK_APPOINTMENT_BUTTON/>");
+    const hasAnyCard = hasDoctors || hasSpecialties || hasBookButton;
 
-    // Clean text for Markdown: remove tool markers
+    // Clean text: remove tool markers
     const cleanText = item.text
       .replace(/<DOCTORS_LIST\/>/g, "")
       .replace(/<SPECIALTIES_LIST\/>/g, "")
@@ -52,109 +51,114 @@ const Chat = () => {
       .trim();
 
     return (
-      <View className={`my-2 mx-4 ${isBot ? "items-start" : "items-end"}`}>
+      <View className={`my-2 ${isBot ? "items-start" : "items-end"}`}>
         <View
-          className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-            isBot
-              ? "bg-cyan-100 rounded-bl-none"
-              : "bg-green-100 rounded-br-none"
-          }`}
+          className={`
+          ${hasAnyCard ? "w-full px-4" : "max-w-[85%] mx-4"}
+          ${isBot ? "" : "items-end"}
+        `}
         >
-          {/* Render normal text via Markdown */}
-          {cleanText ? (
-            <Markdown
-              style={{
-                body: {
-                  fontSize: 15,
-                  lineHeight: 22,
-                  color: isBot ? "#164e63" : "#166534",
-                },
-                paragraph: { marginTop: 0, marginBottom: 8 },
-                strong: { fontWeight: "700" },
-                em: { fontStyle: "italic" },
-                heading1: {
-                  fontSize: 22,
-                  fontWeight: "700",
-                  marginVertical: 8,
-                },
-                heading2: {
-                  fontSize: 20,
-                  fontWeight: "600",
-                  marginVertical: 6,
-                },
-                heading3: {
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginVertical: 6,
-                },
-                heading4: {
-                  fontSize: 16,
-                  fontWeight: "600",
-                  marginVertical: 4,
-                },
-                bullet_list: { marginVertical: 4 },
-                ordered_list: { marginVertical: 4 },
-                list_item: { flexDirection: "row", marginBottom: 4 },
-                bullet_list_icon: { marginRight: 8, marginTop: 2 },
-                ordered_list_icon: { marginRight: 8, marginTop: 2 },
-                code_inline: {
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 4,
-                  fontSize: 14,
-                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                  backgroundColor: "#f3f4f6",
-                },
-                code_block: {
-                  padding: 12,
-                  borderRadius: 8,
-                  marginVertical: 8,
-                  fontSize: 13,
-                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                  backgroundColor: "#f3f4f6",
-                },
-                blockquote: {
-                  borderLeftWidth: 4,
-                  paddingLeft: 12,
-                  paddingVertical: 8,
-                  marginVertical: 8,
-                  borderLeftColor: "#e5e7eb",
-                  backgroundColor: "#f9fafb",
-                },
-                hr: {
-                  height: 1,
-                  marginVertical: 16,
-                  backgroundColor: "#e5e7eb",
-                },
-              }}
-            >
-              {cleanText}
-            </Markdown>
-          ) : null}
+          <View
+            className={`
+            ${hasAnyCard ? "w-full" : "max-w-full"}
+            rounded-2xl px-4 py-3
+            ${isBot ? "bg-cyan-100 rounded-bl-none" : "bg-green-100 rounded-br-none"}
+          `}
+          >
+            {cleanText ? (
+              <Markdown
+                style={{
+                  body: {
+                    fontSize: 15,
+                    lineHeight: 22,
+                    color: isBot ? "#164e63" : "#166534",
+                  },
+                  paragraph: { marginTop: 0, marginBottom: 8 },
+                  strong: { fontWeight: "700" },
+                  em: { fontStyle: "italic" },
+                  heading1: {
+                    fontSize: 22,
+                    fontWeight: "700",
+                    marginVertical: 8,
+                  },
+                  heading2: {
+                    fontSize: 20,
+                    fontWeight: "600",
+                    marginVertical: 6,
+                  },
+                  heading3: {
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginVertical: 6,
+                  },
+                  heading4: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    marginVertical: 4,
+                  },
+                  bullet_list: { marginVertical: 4 },
+                  ordered_list: { marginVertical: 4 },
+                  list_item: { flexDirection: "row", marginBottom: 4 },
+                  bullet_list_icon: { marginRight: 8, marginTop: 2 },
+                  ordered_list_icon: { marginRight: 8, marginTop: 2 },
+                  code_inline: {
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 4,
+                    fontSize: 14,
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    backgroundColor: "#f3f4f6",
+                  },
+                  code_block: {
+                    padding: 12,
+                    borderRadius: 8,
+                    marginVertical: 8,
+                    fontSize: 13,
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    backgroundColor: "#f3f4f6",
+                  },
+                  blockquote: {
+                    borderLeftWidth: 4,
+                    paddingLeft: 12,
+                    paddingVertical: 8,
+                    marginVertical: 8,
+                    borderLeftColor: "#e5e7eb",
+                    backgroundColor: "#f9fafb",
+                  },
+                  hr: {
+                    height: 1,
+                    marginVertical: 16,
+                    backgroundColor: "#e5e7eb",
+                  },
+                }}
+              >
+                {cleanText}
+              </Markdown>
+            ) : null}
 
-          {/* Render Dynamic Tool Components */}
-          {hasDoctors && (
-            <View className="mt-3">
-              <DoctorsCarousel />
-            </View>
-          )}
+            {/* Dynamic Components — Full Width */}
+            {hasDoctors && (
+              <View className="mt-4 -mx-4">
+                <DoctorsCarousel />
+              </View>
+            )}
 
-          {hasSpecialties && (
-            <View className="mt-3">
-              <SpecialtiesGrid />
-            </View>
-          )}
+            {hasSpecialties && (
+              <View className="mt-4 -mx-4">
+                <SpecialtiesGrid />
+              </View>
+            )}
 
-          {hasBookButton && (
-            <View className="mt-4">
-              <BookAppointmentButton />
-            </View>
-          )}
+            {hasBookButton && (
+              <View className="mt-4">
+                <BookAppointmentButton />
+              </View>
+            )}
 
-          {/* Timestamp */}
-          <Text className="text-xs text-gray-500 mt-3 text-right">
-            {format(item.createdAt, "HH:mm")}
-          </Text>
+            <Text className="text-xs text-gray-500 mt-3 text-right">
+              {format(item.createdAt, "HH:mm")}
+            </Text>
+          </View>
         </View>
       </View>
     );
