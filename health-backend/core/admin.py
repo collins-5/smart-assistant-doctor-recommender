@@ -1,4 +1,4 @@
-# core/admin.py — FINAL CORRECTED VERSION (No more validation errors on save)
+# core/admin.py — FINAL CORRECTED & FULLY WORKING VERSION (with AIChatMessage fixed)
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -13,9 +13,10 @@ from .models import (
     User, Patient, Doctor, Specialty, Appointment,
     Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
     Country, County, Insuarance, DoctorAvailability,
+    AIChatMessage,  # ← Added
 )
 
-# Optional: cleaner sidebar
+# Optional: cleaner sidebar (remove Groups)
 admin.site.unregister(Group)
 
 
@@ -110,26 +111,66 @@ class DoctorAdmin(admin.ModelAdmin):
     get_email.short_description = 'Email'
 
 
-# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN ======================
+# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN (FIXED) ======================
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'is_booked_status')
+    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'booked_status_display')
     list_filter = ('is_recurring', 'start_time', 'doctor')
     search_fields = ('doctor__full_name', 'doctor__user__email')
     readonly_fields = ('end_time',)
     date_hierarchy = 'start_time'
     ordering = ('-start_time',)
 
-    def is_booked_status(self, obj):
+    def booked_status_display(self, obj):
         booked = Appointment.objects.filter(
             doctor=obj.doctor,
             start_time__lt=obj.end_time,
             end_time__gt=obj.start_time,
         ).exists()
+
         color = "red" if booked else "green"
         status = "Booked" if booked else "Available"
-        return format_html(f'<span style="color:{color}; font-weight:bold;">● {status}</span>')
-    is_booked_status.short_description = "Status"
+
+        return format_html(
+            '<span style="color:{}; font-weight:bold;">● {}</span>',
+            color,
+            status
+        )
+
+    booked_status_display.short_description = "Status"
+
+
+# ====================== AI CHAT MESSAGE ADMIN (FULLY FIXED) ======================
+# ====================== AI CHAT MESSAGE ADMIN (FINAL FIXED VERSION) ======================
+@admin.register(AIChatMessage)
+class AIChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'sender_display', 'short_text', 'created_at')
+    list_filter = ('is_from_user', 'created_at', 'patient')
+    search_fields = (
+        'patient__user__email',
+        'patient__first_name',
+        'patient__last_name',
+        'text',
+    )
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('patient',)
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)
+
+    def sender_display(self, obj):
+        if obj.is_from_user:
+            return format_html('<strong style="color:#1976d2;">{}</strong>', 'Patient')
+        return format_html('<strong style="color:#43a047;">{}</strong>', 'AI Assistant')
+    
+    sender_display.short_description = "Sender"
+    sender_display.admin_order_field = 'is_from_user'
+
+    def short_text(self, obj):
+        text = obj.text.strip()
+        if len(text) > 80:
+            return text[:77] + "..."
+        return text
+    short_text.short_description = "Message"
 
 
 # ====================== OTHER ADMINS ======================

@@ -230,3 +230,25 @@ class Notification(models.Model):
     description = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class AIChatMessage(models.Model):
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name='ai_chat_messages'
+    )
+    text = models.TextField()
+    is_from_user = models.BooleanField(
+        default=True,
+        help_text="True if message is from the patient, False if from AI"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['patient', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{'User' if self.is_from_user else 'AI'} to {self.patient} at {self.created_at}"

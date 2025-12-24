@@ -5,20 +5,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
 import { DoctorCard } from "~/components/core/doctor-card";
+import SkeletonList from "~/components/core/SkeletonList";
+import { DoctorCardSkeleton } from "~/components/skeletons/doctor-card-skeleton";
 
 export default function BookmarksScreen() {
   const { doctors, error, loading, refetch } = useBookmarkedDoctors();
 
-  // Initial loading state
   if (loading && doctors.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text className="mt-4 text-gray-600">
-          Loading your bookmarked doctors...
-        </Text>
-      </View>
-    );
+    return <SkeletonList skeletonComponent={DoctorCardSkeleton} count={6} />;
   }
 
   // Error state
