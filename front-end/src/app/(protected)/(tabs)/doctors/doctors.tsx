@@ -8,12 +8,12 @@ import SkeletonList from "~/components/core/SkeletonList";
 import { SheetManager } from "react-native-actions-sheet";
 import { useRouter } from "expo-router";
 
+export type Doctor = NonNullable<GetDoctorsQuery["doctors"]>[number];
 export default function DoctorsScreen() {
   const { doctors, loading, refetch } = useDoctors();
   const doctorList = doctors ?? [];
   const router = useRouter();
 
-  type Doctor = NonNullable<GetDoctorsQuery["doctors"]>[number];
 
   const openBookingSheet = (doctor: Doctor) => {
     SheetManager.show("booking", {

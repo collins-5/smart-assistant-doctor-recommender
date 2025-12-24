@@ -92,7 +92,7 @@ const DoctorAvailability: React.FC<{
     return (
       <TouchableOpacity
         onPress={() => onSelectSlot(item)}
-        className={`m-2 items-center justify-center rounded-2xl border border-primary p-1 ${
+        className={`m-1 items-center justify-center flex-row rounded-2xl border border-primary p-1 ${
           isSelected
             ? "border-primary bg-primary/10"
             : "border-gray-200 bg-card"
@@ -104,20 +104,22 @@ const DoctorAvailability: React.FC<{
           size={28}
           color={isSelected ? "rgb(14, 103, 126)" : "#6B7280"}
         />
-        <Text
-          className={`text-base font-bold mt-2 ${
-            isSelected ? "text-primary" : "text-foreground"
-          }`}
-        >
-          {formatTime(item.startTime)}
-        </Text>
-        <Text
-          className={`text-xs mt-1 ${
-            isSelected ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          to {formatTime(item.endTime)}
-        </Text>
+        <View>
+          <Text
+            className={`text-base font-bold mt-2 ${
+              isSelected ? "text-primary" : "text-foreground"
+            }`}
+          >
+            {formatTime(item.startTime)}
+          </Text>
+          <Text
+            className={`text-xs mt-1 ${
+              isSelected ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            to {formatTime(item.endTime)}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -148,21 +150,21 @@ const DoctorAvailability: React.FC<{
           />
         )}
       </View>
-
       {/* Available Slots Header */}
-      <View className="bg-card rounded-2xl p-6 border border-gray-200">
-        <View className="flex-row items-center gap-3 mb-2">
-          <Ionicons name="time-outline" size={24} color="rgb(14, 103, 126)" />
-          <Text className="text-xl font-bold text-foreground">
-            Available Slots
+      {filteredSlots.length !== 0 && (
+        <View className="bg-card rounded-2xl p-6 border border-gray-200">
+          <View className="flex-row items-center gap-3 mb-2">
+            <Ionicons name="time-outline" size={24} color="rgb(14, 103, 126)" />
+            <Text className="text-xl font-bold text-foreground">
+              Available Slots
+            </Text>
+          </View>
+          <Text className="text-muted-foreground">
+            {filteredSlots.length} slot{filteredSlots.length !== 1 ? "s" : ""}{" "}
+            available on this date
           </Text>
         </View>
-        <Text className="text-muted-foreground">
-          {filteredSlots.length} slot{filteredSlots.length !== 1 ? "s" : ""}{" "}
-          available on this date
-        </Text>
-      </View>
-
+      )}
       {/* Selected Slot Summary - MOVED TO TOP */}
       {selectedSlot && (
         <View className="bg-primary rounded-2xl p-6 mx-4 shadow-lg">
@@ -181,7 +183,6 @@ const DoctorAvailability: React.FC<{
           </Text>
         </View>
       )}
-
       {/* 3-Column Grid */}
       {filteredSlots.length === 0 ? (
         <View className="bg-card rounded-2xl p-8 border border-gray-200 items-center">
@@ -201,7 +202,7 @@ const DoctorAvailability: React.FC<{
             numColumns={3}
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 10 }}
+            contentContainerStyle={{ paddingBottom: 1 }}
           />
         </View>
       )}
