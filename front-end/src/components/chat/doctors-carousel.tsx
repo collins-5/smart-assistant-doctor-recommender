@@ -9,6 +9,7 @@ import { DoctorCardSkeleton } from "~/components/skeletons/doctor-card-skeleton"
 import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
 import SkeletonList from "../core/SkeletonList";
+import { SheetManager } from "react-native-actions-sheet";
 
 interface Doctor {
   id: number;
@@ -35,6 +36,12 @@ const DoctorsCarousel = () => {
     });
   };
 
+  const openBookingSheet = (doctor: Doctor) => {
+      SheetManager.show("booking", {
+        payload: { doctor },
+      });
+    };
+
   const handleViewAll = () => {
     router.push("(protected)/(tabs)/doctors/doctors");
   };
@@ -54,7 +61,10 @@ const DoctorsCarousel = () => {
         homecarePrice={item.homecarePrice}
         bio={item.bio}
         onPressCard={() => goToDoctorProfile(item.id)}
-        // No action buttons in chat carousel — keeps it clean and focused
+        primaryAction={{
+          text: "Book Appointment",
+          onPress: () => openBookingSheet(item),
+        }}
       />
     </View>
   );

@@ -28,10 +28,6 @@ Use these exact formats:
 Here are some available doctors
 [/TOOL]
 
-[TOOL:SHOW_SPECIALTIES]
-Here are available specialties
-[/TOOL]
-
 [TOOL:BOOK_APPOINTMENT]
 Would you like help booking an appointment?
 [/TOOL]

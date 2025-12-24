@@ -9,7 +9,7 @@ export const useDoctor = (id: number) => {
         skip: !id || isNaN(id), // Don't run query if no valid id
     });
 
-    console.log('Availabilities:', JSON.stringify(data?.doctor?.availabilities, null, 2));
+    // console.log('Availabilities:', JSON.stringify(data?.doctor?.availabilities, null, 2));
 
     return {
         doctor: data?.doctor || null,

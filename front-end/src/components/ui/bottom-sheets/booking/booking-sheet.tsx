@@ -150,7 +150,7 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
           (payload?.doctor
             ? BookingStep.SelectMode
             : BookingStep.SelectDoctor) && (
-          <View className="mt-8">
+          <View className="mb-10 mt-2">
             <Button variant="outline" text="Back" onPress={handleBack} />
           </View>
         )}
