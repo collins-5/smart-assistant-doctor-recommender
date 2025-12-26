@@ -2,21 +2,17 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { useMyAppointments } from "~/lib/hooks/useMyAppointments";
+import { useMyAppointments, Appointment } from "~/lib/hooks/useMyAppointments"; // ← Import the type!
+import { Skeleton } from "~/components/ui/skeleton";
+import SkeletonList from "~/components/core/SkeletonList";
+import AppointmentCardSkeleton from "~/components/skeletons/appointment-card-skeleton";
+import AppointmentCard from "~/components/appointment/appointment-card";
 
 export default function AppointmentsScreen() {
   const { appointments, loading } = useMyAppointments();
 
-  if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-gray-600">Loading appointments...</Text>
-      </View>
-    );
-  }
-
-  const renderItem = ({ item }: { item: any }) => (
-    <View className="p-4 m-1 mx-4 bg-white rounded-2xl shadow-lg border border-gray-100">
+  const renderItem = ({ item }: { item: Appointment }) => (
+    <View className="p-4 mx-4 mb-4 bg-white rounded-2xl shadow-lg border border-gray-100">
       <Text className="text-lg font-bold text-teal-600">
         {item.doctor.title} {item.doctor.fullName}
       </Text>
@@ -37,15 +33,23 @@ export default function AppointmentsScreen() {
 
       <View className="flex-row justify-between mt-3">
         <Text className="text-sm text-gray-500">
-          Mode: <Text className="font-semibold">{item.encounterMode}</Text>
+          Mode:{" "}
+          <Text className="font-semibold text-foreground">
+            {item.encounterMode === "TELE"
+              ? "Teleconsult"
+              : item.encounterMode === "CLINIC"
+                ? "Clinic Visit"
+                : "Homecare"}
+          </Text>
         </Text>
         <Text className="text-sm text-gray-500">
-          Cost: <Text className="font-semibold">KES {item.cost}</Text>
+          Cost:{" "}
+          <Text className="font-semibold text-foreground">KES {item.cost}</Text>
         </Text>
       </View>
 
       <Text
-        className={`mt-3 font-bold text-lg ${
+        className={`mt-4 font-bold text-lg ${
           item.paymentCompleted ? "text-green-600" : "text-red-600"
         }`}
       >
@@ -54,18 +58,26 @@ export default function AppointmentsScreen() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <SkeletonList skeletonComponent={AppointmentCardSkeleton} count={5}/>
+    );
+  }
+
   return (
     <FlashList
       data={appointments}
-      renderItem={renderItem}
+      renderItem={({ item }: { item: Appointment }) => (
+        <AppointmentCard appointment={item} />
+      )}
       keyExtractor={(item) => item.id.toString()}
       ListEmptyComponent={
-        <View className="flex-1 justify-center items-center mt-20 px-8">
-          <Text className="text-gray-500 text-center text-lg">
+        <View className="flex-1 justify-center items-center mt-32 px-8">
+          <Text className="text-gray-500 text-center text-xl font-medium">
             No appointments yet
           </Text>
-          <Text className="text-gray-400 text-center mt-2">
-            Your booked appointments will appear here
+          <Text className="text-gray-400 text-center mt-3 text-base">
+            Your booked appointments will appear here once you schedule them
           </Text>
         </View>
       }

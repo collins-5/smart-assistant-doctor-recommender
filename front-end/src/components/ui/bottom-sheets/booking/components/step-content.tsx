@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ConsultationModeCard from "./consultation-mode";
 import DoctorAvailability from "./doctor-availability";
 import PaymentSummary from "./payment-summary";
+import { Separator } from "~/components/ui/separator";
 
 type StepContentProps = {
   step: number;
@@ -50,25 +51,29 @@ const StepContent: React.FC<StepContentProps> = ({
 
     case 2:
       return (
-        <View className="gap-8">
+        <View className="gap-1">
           <Text className="text-2xl font-bold text-foreground text-center">
             Select Consultation Mode
           </Text>
-          <View className="flex-row gap-4">
+          <Separator className="bg-primary mb-3"/>
+          <View className="flex gap-4 mt-1">
             <ConsultationModeCard
               mode="TELE"
               selected={selectedMode === "TELE"}
               onPress={() => onSelectMode("TELE")}
+              price={selectedDoctor?.teleconsultPrice}
             />
             <ConsultationModeCard
               mode="CLINIC"
               selected={selectedMode === "CLINIC"}
               onPress={() => onSelectMode("CLINIC")}
-            />
+              price={selectedDoctor?.clinicVisitPrice}
+            /> 
             <ConsultationModeCard
               mode="HOME"
               selected={selectedMode === "HOME"}
               onPress={() => onSelectMode("HOME")}
+              price={selectedDoctor?.homecarePrice}
             />
           </View>
         </View>

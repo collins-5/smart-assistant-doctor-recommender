@@ -19,5 +19,11 @@ query GetDoctors {
     homecarePrice
     takesPrepaidPayment
     takesPostpaidPayment
+    county {
+      name
+      country {
+        name
+      }
+    }
   }
 }

@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Icon from "@/components/ui/icon"; // ← CHANGE THIS IF YOUR ICON PATH IS DIFFERENT
-import { DoctorCard } from "@/components/core/doctor-card";
+import { DoctorCard } from "~/components/doctors/doctor-card";
 import { useBookAppointment } from "~/lib/hooks/useBookAppointment";
 
 interface BookingModalProps {
