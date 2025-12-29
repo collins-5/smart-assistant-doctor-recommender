@@ -73,14 +73,14 @@ export default function DoctorProfileScreen() {
           <View>
             <Button
               leftIcon={<Icon name="arrow-left" />}
-              onPress={() =>
-                router.replace("/(protected)/(tabs)/doctors/doctors")
-              }
+              onPress={() => router.back()}
+              className="rounded-full"
             />
           </View>
           <Text className="text-3xl font-bold text-center my-1 text-primary-foreground">
             {doctor.fullName}
           </Text>
+          <View></View>
           <View></View>
         </View>
         <DoctorCard

@@ -21,6 +21,11 @@ import DoctorsCarousel from "~/components/chat/doctors-carousel";
 import SpecialtiesGrid from "~/components/chat/specialties-grid";
 import { Skeleton } from "~/components/ui/skeleton"; // ← Your skeleton component
 
+type Specialty = {
+  id: number | string;
+  name: string;
+};
+
 const ChatScreen = () => {
   const {
     messages,
@@ -85,7 +90,7 @@ const ChatScreen = () => {
              <Skeleton className="h-4 w-32 rounded-full" />
            </View>
            <View className="mt-3 flex-row justify-end">
-             <Skeleton className="h-3 w-12 rounded-full" />
+             <Skeleton className="h-3 w-12 rounded-full" /> 
            </View>
          </View>
        </View>
@@ -202,7 +207,8 @@ const ChatScreen = () => {
 
             {hasSpecialties && (
               <View className="mt-4 -mx-4">
-                <SpecialtiesGrid />
+                <SpecialtiesGrid 
+                />
               </View>
             )}
 

@@ -1,17 +1,25 @@
-// src/app/(tabs)/doctors.tsx
+// src/screens/doctor/doctors-screen.tsx
 import { View, Text, FlatList } from "react-native";
 import { useDoctors } from "~/lib/hooks/useDoctors";
-import { useCurrentLocation } from "~/lib/hooks/useCurrentLocation"; // ← New hook
+import { useCurrentLocation } from "~/lib/hooks/useCurrentLocation";
 import { DoctorCardSkeleton } from "~/components/skeletons/doctor-card-skeleton";
 import SkeletonList from "~/components/core/SkeletonList";
 import { SheetManager } from "react-native-actions-sheet";
 import { useRouter } from "expo-router";
 import { DoctorCard } from "~/components/doctors/doctor-card";
 import { SearchBar } from "~/components/doctors/search-input";
+import { Button } from "~/components/ui/button";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function DoctorsScreen() {
-  const { doctors, loading, refetch, searchQuery, setSearchQuery } =
-    useDoctors();
+  const {
+    doctors,
+    loading,
+    refetch,
+    searchQuery,
+    setSearchQuery,
+    filters, // ← Now safely available
+  } = useDoctors();
 
   const { getLocation, isLoading: locationLoading } = useCurrentLocation();
   const router = useRouter();
@@ -24,9 +32,7 @@ export default function DoctorsScreen() {
   };
 
   const openBookingSheet = (doctor: any) => {
-    SheetManager.show("booking", {
-      payload: { doctor },
-    });
+    SheetManager.show("booking", { payload: { doctor } });
   };
 
   const goToDoctorProfile = (doctorId: number) => {
@@ -65,24 +71,48 @@ export default function DoctorsScreen() {
     );
   };
 
+  // Safe check — fallback if filters somehow undefined
+  const hasActiveFilters =
+    filters &&
+    (filters.specialtyId !== null ||
+      filters.priceRange[1] < 10000 ||
+      filters.availability !== null ||
+      filters.countryName !== null ||
+      filters.countyName !== null);
+
+  console.log (hasActiveFilters) 
+
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <View className="bg-primary py-6">
         <Text className="text-3xl font-bold text-center text-primary-foreground">
           Available Doctors
         </Text>
       </View>
 
-      {/* Separated Search Bar */}
-      <SearchBar
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onLocationPress={handleLocationPress}
-        locationLoading={locationLoading}
-      />
+      <View className="flex-row items-center border-b border-border">
+        <View className="flex-1">
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            onLocationPress={handleLocationPress}
+            locationLoading={locationLoading}
+          />
+        </View>
 
-      {/* Doctors List */}
+        {/* Filter Button with Green Dot */}
+        <Button
+          variant="ghost"
+          onPress={() => SheetManager.show("doctor-filters-sheet")}
+          className="relative px-4"
+          leftIcon={<Ionicons name="filter" size={24} color="#0d9488" />}
+        />
+
+          {hasActiveFilters && (
+            <View className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+          )}
+      </View>
+
       <FlatList
         data={doctors}
         renderItem={renderDoctor}
@@ -100,8 +130,8 @@ export default function DoctorsScreen() {
           loading ? null : (
             <View className="flex-1 items-center justify-center mt-32 px-8">
               <Text className="text-muted-foreground text-lg text-center">
-                {searchQuery
-                  ? `No doctors found matching "${searchQuery}"`
+                {doctors.length === 0
+                  ? "No doctors match your search or filters"
                   : "No doctors available at the moment"}
               </Text>
             </View>

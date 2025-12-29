@@ -21,24 +21,6 @@ export default function BookmarksScreen() {
     return <SkeletonList skeletonComponent={DoctorCardSkeleton} count={6} />;
   }
 
-  // Error state
-  if (error) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50 px-8">
-        <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-        <Text className="text-red-600 text-center text-lg mt-4">
-          {error.message || "Something went wrong"}
-        </Text>
-        <TouchableOpacity
-          onPress={() => refetch()}
-          className="mt-6 bg-blue-600 py-3 px-6 rounded-full"
-        >
-          <Text className="text-white font-semibold">Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const goToDoctorProfile = (doctorId: number) => {
     router.push({
       pathname: "/(protected)/doctor/[id]",
@@ -69,26 +51,48 @@ export default function BookmarksScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <FlatList
-        data={doctors}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerClassName="pt-4 pb-10"
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={refetch}
-        renderItem={renderDoctor}
-        ListEmptyComponent={
-          <View className="flex-1 justify-center items-center mt-20 px-10">
-            <Ionicons name="bookmark-outline" size={80} color="#94a3b8" />
-            <Text className="text-gray-500 text-xl font-medium mt-6 text-center">
-              No bookmarked doctors yet
-            </Text>
-            <Text className="text-gray-400 text-center mt-2">
-              Tap the bookmark icon on any doctor's profile to save them here.
-            </Text>
-          </View>
-        }
-      />
+      <View className="bg-primary py-6">
+        <Text className="text-3xl font-bold text-center text-primary-foreground">
+          Bookmarks
+        </Text>
+      </View>
+      {error ? (
+        <View className="flex-1 justify-center items-center mt-20 px-10">
+          <Ionicons name="bookmark-outline" size={80} color="#94a3b8" />
+          <Text className="text-red-600 text-center text-lg mt-4">
+            {error.message || "Something went wrong"}
+          </Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            className="mt-1 bg-blue-600 py-1 px-6 rounded-full"
+          >
+            <Text className="text-destructive font-semibold">Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? (
+        <SkeletonList skeletonComponent={DoctorCardSkeleton} count={6} />
+      ) : (
+        <FlatList
+          data={doctors}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerClassName="pt-4 pb-10"
+          showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={refetch}
+          renderItem={renderDoctor}
+          ListEmptyComponent={
+            <View className="flex-1 justify-center items-center mt-20 px-10">
+              <Ionicons name="bookmark-outline" size={80} color="#94a3b8" />
+              <Text className="text-gray-500 text-xl font-medium mt-6 text-center">
+                No bookmarked doctors yet
+              </Text>
+              <Text className="text-gray-400 text-center mt-2">
+                Tap the bookmark icon on any doctor's profile to save them here.
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }

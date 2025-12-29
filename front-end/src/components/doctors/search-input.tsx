@@ -23,7 +23,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   locationLoading,
 }) => {
   return (
-    <View className="px-4 py-4 bg-background border-b border-border">
+    <View className="px-4 py-4  w-full bg-background border-b border-border">
       <View className="flex-row items-center bg-muted rounded-full px-4 py-3">
         <Icon name="magnify" size={20} color="#666" />
         <TextInput

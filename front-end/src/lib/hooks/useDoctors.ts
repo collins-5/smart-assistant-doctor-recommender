@@ -1,7 +1,7 @@
 // src/lib/hooks/useDoctors.ts
-
 import { useQuery } from '@apollo/client';
 import { useState, useMemo } from 'react';
+import { useDoctorsFilter } from "~/lib/context/DoctorsFilterContext";
 import {
     GetDoctorsDocument,
     GetSpecialtiesDocument,
@@ -29,51 +29,81 @@ export const useDoctors = () => {
     });
 
     const allDoctors: Doctor[] = data?.doctors || [];
-
     const [searchQuery, setSearchQuery] = useState('');
+    const { filters } = useDoctorsFilter();
 
     const doctors = useMemo(() => {
-        if (!searchQuery.trim()) return allDoctors;
+        let result = allDoctors;
 
-        const queryWords = searchQuery
-            .toLowerCase()
-            .trim()
-            .replace(/[,]/g, '') // Remove commas: "siaya, kenya" → "siaya kenya"
-            .split(/\s+/)
-            .filter(word => word.length > 0);
+        // Text Search
+        if (searchQuery.trim()) {
+            const queryWords = searchQuery
+                .toLowerCase()
+                .trim()
+                .replace(/[,]/g, '')
+                .split(/\s+/)
+                .filter(w => w.length > 0);
 
-        if (queryWords.length === 0) return allDoctors;
+            result = result.filter(doctor => {
+                if (!doctor) return false;
 
-        return allDoctors.filter((doctor) => {
+                const text = [
+                    doctor.firstName,
+                    doctor.lastName,
+                    doctor.fullName,
+                    doctor.primarySpecialty?.name,
+                    doctor.county?.name,
+                    doctor.county?.country?.name,
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+
+                return queryWords.every(word => text.includes(word));
+            });
+        }
+
+        // Advanced Filters (including new location filters)
+        result = result.filter(doctor => {
             if (!doctor) return false;
 
-            const nameParts = [
-                doctor.firstName,
-                doctor.lastName,
-                doctor.fullName,
-            ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
+            // Specialty
+            if (filters.specialtyId && doctor.primarySpecialty?.id !== filters.specialtyId)
+                return false;
 
-            const specialty = doctor.primarySpecialty?.name?.toLowerCase() || '';
-            const county = doctor.county?.name?.toLowerCase() || '';
-            const country = doctor.county?.country?.name?.toLowerCase() || '';
+            // Price
+            const price = doctor.teleconsultPrice ?? doctor.clinicVisitPrice ?? doctor.homecarePrice ?? 0;
+            if (price < filters.priceRange[0] || price > filters.priceRange[1])
+                return false;
 
-            // Combine all searchable text for this doctor
-            const doctorText = `${nameParts} ${specialty} ${county} ${country}`;
+            // Availability
+            if (filters.availability) {
+                if (filters.availability === "online" && doctor.teleconsultPrice === null) return false;
+                if (filters.availability === "clinic" && doctor.clinicVisitPrice === null) return false;
+                if (filters.availability === "home" && doctor.homecarePrice === null) return false;
+            }
 
-            // EVERY query word must appear somewhere in the doctor's text
-            return queryWords.every(word => doctorText.includes(word));
+            // Country
+            if (filters.countryName && doctor.county?.country?.name !== filters.countryName)
+                return false;
+
+            // County
+            if (filters.countyName && doctor.county?.name !== filters.countyName)
+                return false;
+
+            return true;
         });
-    }, [allDoctors, searchQuery]);
+
+        return result;
+    }, [allDoctors, searchQuery, filters]);
 
     return {
-        doctors, // filtered by name, specialty, county, country
+        doctors,
         loading,
         error,
         refetch,
         searchQuery,
         setSearchQuery,
+        filters, 
     };
 };

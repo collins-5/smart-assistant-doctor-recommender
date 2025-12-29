@@ -17,7 +17,7 @@ import Icon from "~/components/ui/icon"; // ← Your custom Icon component
 import type { IconNames } from "~/components/ui/icon";
 
 type Doctor = {
-  id: number | string;
+  id: number ;
   fullName?: string;
   firstName?: string;
   lastName?: string;
@@ -31,7 +31,7 @@ type Specialty = {
 };
 
 // Mapping specialty names to specific, meaningful icons from your allowed list
-const specialtyIconMap: Record<string, IconNames> = {
+export const specialtyIconMap: Record<string, IconNames> = {
   Cardiology: "heart-outline",
   General: "doctor",
   Dermatology: "arm-flex",
@@ -66,6 +66,13 @@ export default function Dashboard() {
     }
   };
 
+   const goToDoctorProfile = (doctorId: number) => {
+     router.push({
+       pathname: "/(protected)/doctors/[id]",
+       params: { id: doctorId.toString() },
+     });
+   };
+
   const healthTips = [
     "Stay hydrated — drink at least 8 glasses of water daily",
     "Get 7–9 hours of sleep every night for better health",
@@ -76,7 +83,7 @@ export default function Dashboard() {
   // Compact Doctor Card — EXACTLY as it was originally (untouched)
   const renderDoctor = ({ item }: { item: Doctor }) => (
     <TouchableOpacity
-      onPress={() => router.push("(protected)/(tabs)/doctors")}
+      onPress={ () => goToDoctorProfile(item.id)}
       className="mr-5 p-4 w-60 flex-row bg-white rounded-3xl shadow-lg overflow-hidden"
       style={{ elevation: 8 }}
     >
@@ -108,11 +115,9 @@ export default function Dashboard() {
     const iconName = specialtyIconMap[item.name] || "medical-bag"; // fallback icon
 
     return (
-      <TouchableOpacity
-        onPress={() => router.push("(protected)/(tabs)/doctors")}
+      <View
         className="mr-3 w-32 bg-white rounded-3xl shadow-lg overflow-hidden"
         style={{ elevation: 6 }}
-        activeOpacity={0.8}
       >
         <View className="pb-4 items-center justify-center">
           <View className="w-16 h-16 bg-teal-100/60 rounded-2xl items-center justify-center">
@@ -122,7 +127,7 @@ export default function Dashboard() {
             {item.name}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 

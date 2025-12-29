@@ -176,6 +176,7 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
               primarySpecialty={selectedDoctor.primarySpecialty}
               subSpecialties={selectedDoctor.subSpecialties}
               onPressCard={handleCloseAttempt} // Optional: treat tap as cancel attempt
+              county={selectedDoctor.county}
               primaryAction={{
                 text: "Change Doctor",
                 onPress: handleChangeDoctor,
