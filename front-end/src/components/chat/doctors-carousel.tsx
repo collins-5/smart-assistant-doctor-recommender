@@ -4,7 +4,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { FlashList, ListRenderItem } from "@shopify/flash-list";
 import { useDoctors } from "~/lib/hooks/useDoctors";
-import { DoctorCard } from "~/components/core/doctor-card";
+import { DoctorCard } from "~/components/doctors/doctor-card";
 import { DoctorCardSkeleton } from "~/components/skeletons/doctor-card-skeleton"; // Adjust path if needed
 import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -37,10 +37,10 @@ const DoctorsCarousel = () => {
   };
 
   const openBookingSheet = (doctor: Doctor) => {
-      SheetManager.show("booking", {
-        payload: { doctor },
-      });
-    };
+    SheetManager.show("booking", {
+      payload: { doctor },
+    });
+  };
 
   const handleViewAll = () => {
     router.push("(protected)/(tabs)/doctors/doctors");

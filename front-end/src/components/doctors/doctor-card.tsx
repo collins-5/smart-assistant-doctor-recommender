@@ -1,4 +1,3 @@
-// src/components/core/DoctorCard.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -8,12 +7,20 @@ import {
   ActivityIndicator,
 } from "react-native";
 import type { FC } from "react";
-import { BookmarkDoctorButton } from "./bookmark-button";
+import { BookmarkDoctorButton } from "../core/bookmark-button";
 import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
+import Icon from "../ui/icon";
 
 interface Specialty {
   id: string | number;
   name: string;
+}
+
+interface County {
+  name: string;
+  country: {
+    name: string;
+  };
 }
 
 interface ActionButton {
@@ -37,11 +44,10 @@ interface DoctorCardProps {
   teleconsultPrice?: number | string | null;
   clinicVisitPrice?: number | string | null;
   homecarePrice?: number | string | null;
-
+  county?: County | null; // ← Added
   // Optional buttons
   primaryAction?: ActionButton;
   secondaryAction?: ActionButton;
-
   // Optional: tap entire card
   onPressCard?: () => void;
 }
@@ -52,7 +58,6 @@ const ActionButton: FC<{
   className?: string;
 }> = ({ button, className = "" }) => {
   const { text, onPress, variant = "default", loading, disabled } = button;
-
   const variants = {
     default: "bg-primary text-primary-foreground",
     outline: "border-2 border-primary text-primary bg-transparent",
@@ -95,12 +100,12 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   teleconsultPrice,
   clinicVisitPrice,
   homecarePrice,
+  county,
   primaryAction,
   secondaryAction,
   onPressCard,
 }) => {
   const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
-
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -110,6 +115,8 @@ export const DoctorCard: FC<DoctorCardProps> = ({
       setIsTruncated(true);
     }
   };
+
+  const locationText = county ? `${county.name}, ${county.country.name}` : null;
 
   const CardWrapper = onPressCard ? TouchableOpacity : View;
 
@@ -145,9 +152,22 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               `${firstName || ""} ${lastName || ""}`.trim() ||
               "Dr. Unknown"}
           </Text>
+
           <Text className="text-muted-foreground mt-1">
             {primarySpecialty?.name || "General Practitioner"}
           </Text>
+
+          {/* Location: County, Country */}
+          {locationText && (
+            <Text className="text-muted-foreground text-sm mt-1">
+              <Icon
+                name="map-marker-radius-outline"
+                className="text-destructive ml-r"
+                size={16}
+              />
+              {locationText}
+            </Text>
+          )}
 
           {subSpecialties && subSpecialties.length > 0 && (
             <View className="mt-3 flex-row flex-wrap gap-2">
@@ -168,6 +188,7 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               )}
             </View>
           )}
+
           {bio && (
             <View className="mt-2">
               <Text
@@ -177,7 +198,6 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               >
                 {bio}
               </Text>
-
               {isTruncated && (
                 <Text
                   onPress={() => setIsExpanded(!isExpanded)}

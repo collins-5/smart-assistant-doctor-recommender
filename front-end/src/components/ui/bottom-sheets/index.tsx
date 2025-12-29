@@ -4,14 +4,25 @@ import { registerSheet, SheetDefinition } from "react-native-actions-sheet";
 import ResetPasswordBottomSheet, {
   ResetPasswordSheetDefinition,
 } from "./reset-password";
-import LogoutConfirmationSheet, { LogoutConfirmationSheetDefinition } from "./logout-confirmtion";
+import LogoutConfirmationSheet, {
+  LogoutConfirmationSheetDefinition,
+} from "./logout-confirmtion";
 import BookingSheet, { BookingSheetDefinition } from "./booking/booking-sheet";
-
+import UnbookmarkConfirmationSheet from "./unbookmark";
+import CancelBookingConfirmationSheet, {
+  CancelBookingConfirmationSheetDefinition,
+} from "./cancel-booking-confirmation";
+import DoctorsFilterSheet from "./doctors-filter-sheet";
+import GenericSelectSheet, { GenericSelectSheetDefinition } from "./generic-select-sheet";
 
 const sheets: Record<string, React.ElementType> = {
   "reset-password": ResetPasswordBottomSheet,
   "logout-confirmation": LogoutConfirmationSheet,
+  "unbookmark-confirmation": UnbookmarkConfirmationSheet,
   booking: BookingSheet,
+  "cancel-booking-confirmation": CancelBookingConfirmationSheet, // ← Registered
+  "doctor-filters-sheet": DoctorsFilterSheet,
+  "generic-select-sheet": GenericSelectSheet, // ← Registered with fixed ID
 };
 
 (() => {
@@ -24,7 +35,9 @@ declare module "react-native-actions-sheet" {
   interface Sheets {
     "reset-password": ResetPasswordSheetDefinition;
     "logout-confirmation": LogoutConfirmationSheetDefinition;
-    "booking": BookingSheetDefinition;
+    booking: BookingSheetDefinition;
+    "cancel-booking-confirmation": CancelBookingConfirmationSheetDefinition;
+    "generic-select-sheet": GenericSelectSheetDefinition; // ← Added
   }
 }
 

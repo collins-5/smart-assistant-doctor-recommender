@@ -1,13 +1,11 @@
 // src/hooks/useAIAssistant.ts
-
 import { useState, useCallback, useEffect } from "react";
 import { useAIChatMessages, useSendAIChatMessage } from "./useAIChatMessages";
 import { SYSTEM_PROMPT } from "./ai-prompt";
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
-
 if (!GEMINI_API_KEY) {
-    console.warn("⚠️ GEMINI_API_KEY is missing from .env!");
+    console.warn("GEMINI_API_KEY is missing from .env!");
 }
 
 export type ChatMessage = {
@@ -20,7 +18,7 @@ export type ChatMessage = {
 const WELCOME_MESSAGE: ChatMessage = {
     id: "greeting-1",
     text:
-        "Hi! I'm your Health Assistant. 👋\n\nHow are you feeling today? Please describe any symptoms you're experiencing, and I'll help guide you with general information.\n\nRemember: I'm not a doctor — this is for informational purposes only.",
+        "Hi! I'm your Health Assistant.\n\nHow are you feeling today? Please describe any symptoms you're experiencing, and I'll help guide you with general information.\n\nRemember: I'm not a doctor — this is for informational purposes only.",
     isBot: true,
     createdAt: new Date(),
 };
@@ -36,7 +34,7 @@ export const useAIAssistant = () => {
     // Sync backend messages → local messages when data changes
     useEffect(() => {
         if (backendMessages.length > 0) {
-            const formatted = backendMessages.map((msg : any) => ({
+            const formatted = backendMessages.map((msg: any) => ({
                 id: msg.id.toString(),
                 text: msg.text,
                 isBot: !msg.isFromUser,
@@ -53,7 +51,6 @@ export const useAIAssistant = () => {
             if (!userText.trim()) return;
 
             const trimmedText = userText.trim();
-
             const userMessage: ChatMessage = {
                 id: Date.now().toString(),
                 text: trimmedText,
@@ -98,23 +95,20 @@ export const useAIAssistant = () => {
                     data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
                     "I'm having trouble responding right now. Please try again.";
 
-                // === TOOL INTERCEPTION (Future-Proof) ===
+                // === TOOL INTERCEPTION ===
                 let processedText = botText;
-
                 if (processedText.includes("[TOOL:SHOW_DOCTORS]")) {
                     processedText = processedText.replace(
                         /\[TOOL:SHOW_DOCTORS\](.*?)\[\/TOOL\]/s,
                         "$1\n\n<DOCTORS_LIST/>"
                     );
                 }
-
                 if (processedText.includes("[TOOL:SHOW_SPECIALTIES]")) {
                     processedText = processedText.replace(
                         /\[TOOL:SHOW_SPECIALTIES\](.*?)\[\/TOOL\]/s,
                         "$1\n\n<SPECIALTIES_LIST/>"
                     );
                 }
-
                 if (processedText.includes("[TOOL:BOOK_APPOINTMENT]")) {
                     processedText = processedText.replace(
                         /\[TOOL:BOOK_APPOINTMENT\](.*?)\[\/TOOL\]/s,
@@ -133,14 +127,12 @@ export const useAIAssistant = () => {
                 await saveMessageToBackend(processedText, false);
             } catch (error: any) {
                 console.error("AI Assistant Error:", error);
-
                 const errorMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),
                     text: "Sorry, I'm having trouble connecting. Please try again.",
                     isBot: true,
                     createdAt: new Date(),
                 };
-
                 setMessages((prev) => [...prev, errorMessage]);
             } finally {
                 setIsLoading(false);
@@ -155,7 +147,8 @@ export const useAIAssistant = () => {
         messages,
         inputText,
         setInputText,
-        isLoading: isLoading || loadingHistory,
+        isLoading,                    
+        loadingHistory,               
         sendMessage,
         refreshChat,
     };

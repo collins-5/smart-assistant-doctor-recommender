@@ -15,6 +15,7 @@ import SessionInitializer, {
 } from "~/components/core/session-initializer";
 import { useOnboardingStore } from "~/lib/store/onboarding";
 import { useSessionStore } from "~/lib/store/auth";
+import { DoctorsFilterProvider } from "~/lib/context/DoctorsFilterContext";
 
 // This component controls navigation based on auth state
 const AuthNavigator = () => {
@@ -58,20 +59,22 @@ export default function RootLayout() {
   return (
     <ApolloProvider client={client}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <SheetProvider>
-          <SessionInitializer>
-            {/* Define all route groups */}
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(protected)" />
-              {/* Add any other top-level routes here */}
-            </Stack>
+        <DoctorsFilterProvider>
+          <SheetProvider>
+            <SessionInitializer>
+              {/* Define all route groups */}
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(protected)" />
+                {/* Add any other top-level routes here */}
+              </Stack>
 
-            {/* This controls the actual navigation */}
-            <AuthNavigator />
-          </SessionInitializer>
-        </SheetProvider>
+              {/* This controls the actual navigation */}
+              <AuthNavigator />
+            </SessionInitializer>
+          </SheetProvider>
+        </DoctorsFilterProvider>
       </GestureHandlerRootView>
     </ApolloProvider>
   );

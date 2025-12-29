@@ -1,3 +1,4 @@
+// src/components/sheets/BookingSheet.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -5,10 +6,11 @@ import ActionSheet from "react-native-actions-sheet";
 import { Button } from "~/components/ui/button";
 import { useBookAppointment } from "~/lib/hooks/useBookAppointment";
 import { SheetDefinition, SheetManager } from "react-native-actions-sheet";
-
 import StepContent from "./components/step-content";
-import { BookingStep } from "./types"; 
+import { BookingStep } from "./types";
 import { Ionicons } from "@expo/vector-icons";
+import { DoctorCard } from "~/components/doctors/doctor-card";
+import Icon from "../../icon";
 
 type BookingSheetProps = {
   payload?: { doctor?: any };
@@ -36,18 +38,12 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
     if (payload?.doctor) {
       reset();
       selectDoctor(payload.doctor);
-      goToStep(BookingStep.SelectMode); // ← Clear: step 2
+      goToStep(BookingStep.SelectMode);
     } else {
       reset();
-      goToStep(BookingStep.SelectDoctor); // ← Clear: step 1
+      goToStep(BookingStep.SelectDoctor);
     }
   }, [payload?.doctor]);
-
-  const handleClose = () => {
-    reset();
-    setSelectedSlot(null);
-    SheetManager.hide("booking");
-  };
 
   const handleSlotSelect = (slot: any) => {
     setSelectedSlot(slot);
@@ -67,15 +63,42 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
     if (step === BookingStep.ConfirmPayment) {
       setSelectedSlot(null);
     }
-    goToStep((step - 1) as BookingStep); // Safe because step is never <1 when back is shown
+    goToStep((step - 1) as BookingStep);
   };
+
+  // Check if user has made any progress
+  const hasProgress =
+    step > BookingStep.SelectDoctor ||
+    !!selectedDoctor ||
+    !!selectedMode ||
+    !!selectedSlot;
+
+  // Handle attempt to close (backdrop, swipe down, or X button)
+  const handleCloseAttempt = () => {
+    if (hasProgress) {
+      SheetManager.show("cancel-booking-confirmation");
+    } else {
+      // No progress — safe to close
+      reset();
+      setSelectedSlot(null);
+      SheetManager.hide("booking");
+    }
+  };
+
+  const handleChangeDoctor = () => {
+    handleCloseAttempt(); // Same as closing — ask for confirmation
+  };
+
+  const isModeSelectionStep = step === BookingStep.SelectMode;
+  const showDoctorCard = selectedDoctor && isModeSelectionStep;
 
   return (
     <ActionSheet
       id="booking"
       gestureEnabled={true}
-      closeOnTouchBackdrop={true}
-      onClose={handleClose}
+      closeOnTouchBackdrop={false} // ← Disable direct backdrop close
+      // closeOnPressBackButton={false} // ← Optional: prevent Android back button from closing
+      onClose={handleCloseAttempt} // ← Use our handler instead of direct close
       containerStyle={{
         paddingBottom: insets.bottom + 20,
         paddingHorizontal: 24,
@@ -87,13 +110,21 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
       indicatorStyle={{ width: 50, height: 5, backgroundColor: "#d1d5db" }}
     >
       <ScrollView showsVerticalScrollIndicator={false} className="py-8">
-        {/* Header */}
-        <View className="items-center mb-10">
+        {/* Header with Close Button */}
+        <View className="flex-row justify-between mx-6 items-center">
           <Text className="text-3xl font-bold text-foreground">
             Book Appointment
           </Text>
-          {/* Modern Step Progress Indicator with Correct Line Logic */}
-          <View className="flex-row items-center justify-between mt-8 px-6">
+          <Button
+            onPress={handleCloseAttempt}
+            variant="ghost"
+            leftIcon={<Icon name="close" size={28} />}
+          />
+        </View>
+
+        {/* Step Progress Indicator */}
+        <View className="items-center mb-8">
+          <View className="flex-row items-center justify-between mt-8 px-6 w-full">
             {[1, 2, 3, 4].map((num, index) => (
               <View key={num} className="flex-row items-center flex-1">
                 <View
@@ -108,14 +139,15 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
                   ) : (
                     <Text
                       className={`text-xl font-bold ${
-                        step === num ? "text-primary-foreground" : "text-muted-foreground"
+                        step === num
+                          ? "text-primary-foreground"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {num}
                     </Text>
                   )}
                 </View>
-
                 {index < 3 && (
                   <View className="flex-1 h-1 mx-3 -z-0">
                     <View
@@ -129,6 +161,30 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
             ))}
           </View>
         </View>
+
+        {/* Doctor Card — Only on Mode Step */}
+        {showDoctorCard && selectedDoctor && (
+          <View className="mb-6">
+            <DoctorCard
+              id={selectedDoctor.id}
+              title={selectedDoctor.title}
+              firstName={selectedDoctor.firstName}
+              lastName={selectedDoctor.lastName}
+              fullName={selectedDoctor.fullName}
+              bio={selectedDoctor.bio}
+              profilePictureUrl={selectedDoctor.profilePictureUrl}
+              primarySpecialty={selectedDoctor.primarySpecialty}
+              subSpecialties={selectedDoctor.subSpecialties}
+              onPressCard={handleCloseAttempt} // Optional: treat tap as cancel attempt
+              county={selectedDoctor.county}
+              primaryAction={{
+                text: "Change Doctor",
+                onPress: handleChangeDoctor,
+                variant: "outline",
+              }}
+            />
+          </View>
+        )}
 
         {/* Step Content */}
         <StepContent
@@ -150,7 +206,7 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
           (payload?.doctor
             ? BookingStep.SelectMode
             : BookingStep.SelectDoctor) && (
-          <View className="mb-10 mt-2">
+          <View className="mb-10 mt-6">
             <Button variant="outline" text="Back" onPress={handleBack} />
           </View>
         )}
