@@ -14,6 +14,7 @@ import CancelBookingConfirmationSheet, {
 } from "./cancel-booking-confirmation";
 import DoctorsFilterSheet from "./doctors-filter-sheet";
 import GenericSelectSheet, { GenericSelectSheetDefinition } from "./generic-select-sheet";
+import CancelAppointmentSheet from "./cancel-appointment-sheet";
 
 const sheets: Record<string, React.ElementType> = {
   "reset-password": ResetPasswordBottomSheet,
@@ -22,7 +23,8 @@ const sheets: Record<string, React.ElementType> = {
   booking: BookingSheet,
   "cancel-booking-confirmation": CancelBookingConfirmationSheet, // ← Registered
   "doctor-filters-sheet": DoctorsFilterSheet,
-  "generic-select-sheet": GenericSelectSheet, // ← Registered with fixed ID
+  "generic-select-sheet": GenericSelectSheet, 
+  "cancel-appointment-sheet": CancelAppointmentSheet,
 };
 
 (() => {

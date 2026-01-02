@@ -14,7 +14,7 @@ import { useSpecialties } from "~/lib/hooks/useSpecialties";
 import { Skeleton } from "~/components/ui/skeleton";
 import { FlashList } from "@shopify/flash-list";
 import Icon from "~/components/ui/icon"; // ← Your custom Icon component
-import type { IconNames } from "~/components/ui/icon";
+import { specialtyIconMap } from "~/lib/store/services";
 
 type Doctor = {
   id: number ;
@@ -30,29 +30,6 @@ type Specialty = {
   name: string;
 };
 
-// Mapping specialty names to specific, meaningful icons from your allowed list
-export const specialtyIconMap: Record<string, IconNames> = {
-  Cardiology: "heart-outline",
-  General: "doctor",
-  Dermatology: "arm-flex",
-  Neurology: "brain",
-  Pediatrics: "mother-nurse",
-  Orthopedics: "account-injury",
-  Psychiatry: "brain",
-  Gynecology: "gender-male-female",
-  "General Practitioner": "doctor",
-  "Family Medicine": "home-heart",
-  Dentistry: "food-apple", // closest available
-  Ophthalmology: "eye-outline",
-  ENT: "account-question", // fallback
-  Nutrition: "nutrition",
-  Physiotherapy: "human-wheelchair",
-  "Occupational Therapy": "wheelchair-accessibility",
-  Radiology: "medical-bag",
-  Surgery: "stethoscope",
-  neurosergion: "stethoscope"
-  // Add more as needed
-};
 
 export default function Dashboard() {
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -160,8 +137,8 @@ export default function Dashboard() {
         showsVerticalScrollIndicator={false}
       >
           {/* Popular Specialties – Horizontal scroll */}
-          <View className="mt-8 px-6">
-            <Text className="text-2xl font-bold text-foreground mb-5">
+          <View className="mt-2 px-6">
+            <Text className="text-2xl font-bold text-foreground mb-1">
               Popular Specialties
             </Text>
             <FlashList
@@ -178,7 +155,7 @@ export default function Dashboard() {
 
           {/* Recent Doctors – Horizontal scroll */}
           <View className="mt-10 px-6">
-            <Text className="text-2xl font-bold text-foreground mb-5">
+            <Text className="text-2xl font-bold text-foreground mb-1">
               Recent Doctors
             </Text>
             <FlashList

@@ -39,6 +39,9 @@ export type AppointmentInput = {
 
 export type AppointmentType = {
   __typename?: 'AppointmentType';
+  cancellationReason: Scalars['String']['output'];
+  cancelledAt?: Maybe<Scalars['DateTime']['output']>;
+  cancelledBy?: Maybe<UserType>;
   cost: Scalars['Decimal']['output'];
   doctor?: Maybe<BookmarkedDoctorType>;
   encounterMode: CoreAppointmentEncounterModeChoices;
@@ -48,6 +51,9 @@ export type AppointmentType = {
   paymentCompleted: Scalars['Boolean']['output'];
   rastucId: Scalars['String']['output'];
   startTime: Scalars['DateTime']['output'];
+  status: CoreAppointmentStatusChoices;
+  /** Human readable status */
+  statusDisplay?: Maybe<Scalars['String']['output']>;
 };
 
 export type BookAppointment = {
@@ -86,6 +92,13 @@ export type BookmarkedDoctorType = {
   user: UserType;
 };
 
+export type CancelAppointment = {
+  __typename?: 'CancelAppointment';
+  appointment?: Maybe<AppointmentType>;
+  error?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
 /** An enumeration. */
 export enum CoreAppointmentEncounterModeChoices {
   /** Clinic Visit */
@@ -94,6 +107,18 @@ export enum CoreAppointmentEncounterModeChoices {
   Home = 'HOME',
   /** Teleconsult */
   Tele = 'TELE'
+}
+
+/** An enumeration. */
+export enum CoreAppointmentStatusChoices {
+  /** Cancelled */
+  Cancelled = 'CANCELLED',
+  /** Completed */
+  Completed = 'COMPLETED',
+  /** Ongoing */
+  Ongoing = 'ONGOING',
+  /** Upcoming */
+  Upcoming = 'UPCOMING'
 }
 
 export type CountryType = {
@@ -213,6 +238,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   bookAppointment?: Maybe<BookAppointment>;
   bookmarkDoctor?: Maybe<BookmarkDoctor>;
+  cancelAppointment?: Maybe<CancelAppointment>;
   createDoctorAvailabilityBlock?: Maybe<CreateDoctorAvailabilityBlock>;
   createPatientProfile?: Maybe<CreatePatientProfile>;
   editProfile?: Maybe<EditProfile>;
@@ -236,6 +262,12 @@ export type MutationBookAppointmentArgs = {
 
 export type MutationBookmarkDoctorArgs = {
   doctorId: Scalars['Int']['input'];
+};
+
+
+export type MutationCancelAppointmentArgs = {
+  appointmentId: Scalars['Int']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -319,7 +351,7 @@ export type ObtainJsonWebToken = {
 export type PatientType = {
   __typename?: 'PatientType';
   aiChatMessages: Array<AiChatMessageType>;
-  appointmentSet: Array<AppointmentType>;
+  appointments: Array<AppointmentType>;
   country?: Maybe<CountryType>;
   county?: Maybe<CountyType>;
   dateOfBirth?: Maybe<Scalars['Date']['output']>;
@@ -337,14 +369,12 @@ export type PatientType = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Retrieve all AI chat messages for the current patient */
   aiChatMessages?: Maybe<Array<Maybe<AiChatMessageType>>>;
   appointments?: Maybe<Array<Maybe<AppointmentType>>>;
   bookmarkedDoctors?: Maybe<Array<Maybe<BookmarkedDoctorType>>>;
   counties?: Maybe<Array<Maybe<CountyType>>>;
   countries?: Maybe<Array<Maybe<CountryType>>>;
   doctor?: Maybe<DoctorType>;
-  /** Fetch all future availability slots for a specific doctor */
   doctorAvailabilities?: Maybe<Array<Maybe<DoctorAvailabilityType>>>;
   doctors?: Maybe<Array<Maybe<DoctorType>>>;
   hello?: Maybe<Scalars['String']['output']>;
@@ -352,6 +382,11 @@ export type Query = {
   me?: Maybe<UserType>;
   patients?: Maybe<Array<Maybe<PatientType>>>;
   specialties?: Maybe<Array<Maybe<SpecialtyType>>>;
+};
+
+
+export type QueryAppointmentsArgs = {
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -462,6 +497,14 @@ export type SendAiChatMessageMutationVariables = Exact<{
 
 export type SendAiChatMessageMutation = { __typename?: 'Mutation', sendAiChatMessage?: { __typename?: 'SendAIChatMessage', success?: boolean | null, error?: string | null, message?: { __typename?: 'AIChatMessageType', id: string, text: string, isFromUser: boolean, createdAt: any } | null } | null };
 
+export type CancelAppointmentMutationVariables = Exact<{
+  appointmentId: Scalars['Int']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type CancelAppointmentMutation = { __typename?: 'Mutation', cancelAppointment?: { __typename?: 'CancelAppointment', success?: boolean | null, error?: string | null, appointment?: { __typename?: 'AppointmentType', id: string, status: CoreAppointmentStatusChoices, statusDisplay?: string | null, cancelledAt?: any | null, cancellationReason: string, doctor?: { __typename?: 'BookmarkedDoctorType', fullName: string } | null } | null } | null };
+
 export type CreatePatientProfileMutationVariables = Exact<{
   input: CreatePatientProfileInput;
 }>;
@@ -556,10 +599,12 @@ export type GetDoctorAvailabilitiesQueryVariables = Exact<{
 
 export type GetDoctorAvailabilitiesQuery = { __typename?: 'Query', doctorAvailabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null };
 
-export type GetMyAppointmentsQueryVariables = Exact<{ [key: string]: never; }>;
+export type GetMyAppointmentsQueryVariables = Exact<{
+  status?: InputMaybe<Scalars['String']['input']>;
+}>;
 
 
-export type GetMyAppointmentsQuery = { __typename?: 'Query', appointments?: Array<{ __typename?: 'AppointmentType', id: string, startTime: any, endTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, paymentCompleted: boolean, rastucId: string, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null> | null };
+export type GetMyAppointmentsQuery = { __typename?: 'Query', appointments?: Array<{ __typename?: 'AppointmentType', id: string, startTime: any, endTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, paymentCompleted: boolean, rastucId: string, status: CoreAppointmentStatusChoices, statusDisplay?: string | null, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null> | null };
 
 export type ProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -628,6 +673,51 @@ export function useSendAiChatMessageMutation(baseOptions?: Apollo.MutationHookOp
 export type SendAiChatMessageMutationHookResult = ReturnType<typeof useSendAiChatMessageMutation>;
 export type SendAiChatMessageMutationResult = Apollo.MutationResult<SendAiChatMessageMutation>;
 export type SendAiChatMessageMutationOptions = Apollo.BaseMutationOptions<SendAiChatMessageMutation, SendAiChatMessageMutationVariables>;
+export const CancelAppointmentDocument = gql`
+    mutation CancelAppointment($appointmentId: Int!, $reason: String) {
+  cancelAppointment(appointmentId: $appointmentId, reason: $reason) {
+    success
+    error
+    appointment {
+      id
+      status
+      statusDisplay
+      cancelledAt
+      cancellationReason
+      doctor {
+        fullName
+      }
+    }
+  }
+}
+    `;
+export type CancelAppointmentMutationFn = Apollo.MutationFunction<CancelAppointmentMutation, CancelAppointmentMutationVariables>;
+
+/**
+ * __useCancelAppointmentMutation__
+ *
+ * To run a mutation, you first call `useCancelAppointmentMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useCancelAppointmentMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [cancelAppointmentMutation, { data, loading, error }] = useCancelAppointmentMutation({
+ *   variables: {
+ *      appointmentId: // value for 'appointmentId'
+ *      reason: // value for 'reason'
+ *   },
+ * });
+ */
+export function useCancelAppointmentMutation(baseOptions?: Apollo.MutationHookOptions<CancelAppointmentMutation, CancelAppointmentMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<CancelAppointmentMutation, CancelAppointmentMutationVariables>(CancelAppointmentDocument, options);
+      }
+export type CancelAppointmentMutationHookResult = ReturnType<typeof useCancelAppointmentMutation>;
+export type CancelAppointmentMutationResult = Apollo.MutationResult<CancelAppointmentMutation>;
+export type CancelAppointmentMutationOptions = Apollo.BaseMutationOptions<CancelAppointmentMutation, CancelAppointmentMutationVariables>;
 export const CreatePatientProfileDocument = gql`
     mutation CreatePatientProfile($input: CreatePatientProfileInput!) {
   createPatientProfile(input: $input) {
@@ -1316,8 +1406,8 @@ export type GetDoctorAvailabilitiesLazyQueryHookResult = ReturnType<typeof useGe
 export type GetDoctorAvailabilitiesSuspenseQueryHookResult = ReturnType<typeof useGetDoctorAvailabilitiesSuspenseQuery>;
 export type GetDoctorAvailabilitiesQueryResult = Apollo.QueryResult<GetDoctorAvailabilitiesQuery, GetDoctorAvailabilitiesQueryVariables>;
 export const GetMyAppointmentsDocument = gql`
-    query GetMyAppointments {
-  appointments {
+    query GetMyAppointments($status: String) {
+  appointments(status: $status) {
     id
     startTime
     endTime
@@ -1325,6 +1415,8 @@ export const GetMyAppointmentsDocument = gql`
     cost
     paymentCompleted
     rastucId
+    status
+    statusDisplay
     doctor {
       id
       fullName
@@ -1349,6 +1441,7 @@ export const GetMyAppointmentsDocument = gql`
  * @example
  * const { data, loading, error } = useGetMyAppointmentsQuery({
  *   variables: {
+ *      status: // value for 'status'
  *   },
  * });
  */

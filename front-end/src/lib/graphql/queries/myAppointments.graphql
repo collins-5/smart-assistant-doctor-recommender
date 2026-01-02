@@ -1,5 +1,5 @@
-query GetMyAppointments {
-  appointments {
+query GetMyAppointments($status: String) {
+  appointments(status: $status) {
     id
     startTime
     endTime
@@ -7,6 +7,8 @@ query GetMyAppointments {
     cost
     paymentCompleted
     rastucId
+    status
+    statusDisplay
     doctor {
       id
       fullName
