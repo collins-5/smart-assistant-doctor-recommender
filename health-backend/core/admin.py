@@ -1,5 +1,4 @@
-# core/admin.py — FINAL CORRECTED & FULLY WORKING VERSION (with AIChatMessage fixed)
-
+# core/admin.py — FINAL WITH APPOINTMENT STATUS FILTER
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
@@ -8,17 +7,15 @@ from django.core.files.base import ContentFile
 from django.utils.html import format_html
 from datetime import timedelta
 import os
-
 from .models import (
     User, Patient, Doctor, Specialty, Appointment,
     Organization, OrganizationClinic, PatientDoctorBookmark, Notification,
     Country, County, Insuarance, DoctorAvailability,
-    AIChatMessage,  # ← Added
+    AIChatMessage,
 )
 
 # Optional: cleaner sidebar (remove Groups)
 admin.site.unregister(Group)
-
 
 # ====================== USER ADMIN ======================
 @admin.register(User)
@@ -39,7 +36,6 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
-
 # ====================== PATIENT ADMIN WITH SAFE FILE UPLOAD ======================
 class PatientAdminForm(forms.ModelForm):
     class Meta:
@@ -50,7 +46,6 @@ class PatientAdminForm(forms.ModelForm):
         file = self.cleaned_data.get('profile_picture')
         if not file:
             return file
-
         if hasattr(file, 'read') and hasattr(file, 'name'):
             try:
                 content = file.read()
@@ -60,7 +55,6 @@ class PatientAdminForm(forms.ModelForm):
             except Exception:
                 pass
         return file
-
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
@@ -79,8 +73,7 @@ class PatientAdmin(admin.ModelAdmin):
         return "(No photo)"
     preview_photo.short_description = "Photo"
 
-
-# ====================== DOCTOR AVAILABILITY INLINE (IMPROVED) ======================
+# ====================== DOCTOR AVAILABILITY INLINE ======================
 class DoctorAvailabilityInline(admin.TabularInline):
     model = DoctorAvailability
     extra = 1
@@ -95,8 +88,7 @@ class DoctorAvailabilityInline(admin.TabularInline):
         return "— (Will be set to +30 min after save)"
     end_time_display.short_description = "End Time"
 
-
-# ====================== DOCTOR ADMIN WITH AVAILABILITY INLINE ======================
+# ====================== DOCTOR ADMIN ======================
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'get_email', 'primary_specialty', 'takes_prepaid_payment', 'teleconsult_price')
@@ -110,8 +102,7 @@ class DoctorAdmin(admin.ModelAdmin):
         return obj.user.email if obj.user else '-'
     get_email.short_description = 'Email'
 
-
-# ====================== STANDALONE DOCTOR AVAILABILITY ADMIN (FIXED) ======================
+# ====================== DOCTOR AVAILABILITY ADMIN ======================
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
     list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'booked_status_display')
@@ -127,21 +118,60 @@ class DoctorAvailabilityAdmin(admin.ModelAdmin):
             start_time__lt=obj.end_time,
             end_time__gt=obj.start_time,
         ).exists()
-
         color = "red" if booked else "green"
         status = "Booked" if booked else "Available"
-
         return format_html(
             '<span style="color:{}; font-weight:bold;">● {}</span>',
             color,
             status
         )
-
     booked_status_display.short_description = "Status"
 
+# ====================== APPOINTMENT ADMIN WITH STATUS FILTER ======================
+@admin.register(Appointment)
+class AppointmentAdmin(admin.ModelAdmin):
+    list_display = (
+        'patient', 'doctor', 'start_time', 'encounter_mode',
+        'cost', 'payment_completed', 'status_colored', 'rastuc_id'
+    )
+    list_filter = (
+        'encounter_mode',
+        'payment_completed',
+        'status',  # ← THIS IS THE NEW FILTER YOU WANTED!
+        'start_time',
+        'doctor',
+    )
+    search_fields = (
+        'patient__user__email',
+        'patient__first_name',
+        'patient__last_name',
+        'doctor__user__email',
+        'doctor__first_name',
+        'doctor__full_name',
+        'rastuc_id'
+    )
+    raw_id_fields = ('patient', 'doctor', 'organization', 'organization_clinic')
+    date_hierarchy = 'start_time'
+    ordering = ('-start_time',)
 
-# ====================== AI CHAT MESSAGE ADMIN (FULLY FIXED) ======================
-# ====================== AI CHAT MESSAGE ADMIN (FINAL FIXED VERSION) ======================
+    def status_colored(self, obj):
+        colors = {
+            'UPCOMING': '#1976d2',   # blue
+            'ONGOING': '#ff9800',     # orange
+            'COMPLETED': '#4caf50',   # green
+            'EXPIRED': '#f44336',     # red
+            'CANCELLED': '#9e9e9e',   # gray
+        }
+        color = colors.get(obj.status, '#757575')
+        return format_html(
+            '<span style="color:{}; font-weight:bold;">{}</span>',
+            color,
+            obj.get_status_display()
+        )
+    status_colored.short_description = "Status"
+    status_colored.admin_order_field = 'status'
+
+# ====================== AI CHAT MESSAGE ADMIN ======================
 @admin.register(AIChatMessage)
 class AIChatMessageAdmin(admin.ModelAdmin):
     list_display = ('patient', 'sender_display', 'short_text', 'created_at')
@@ -161,7 +191,6 @@ class AIChatMessageAdmin(admin.ModelAdmin):
         if obj.is_from_user:
             return format_html('<strong style="color:#1976d2;">{}</strong>', 'Patient')
         return format_html('<strong style="color:#43a047;">{}</strong>', 'AI Assistant')
-    
     sender_display.short_description = "Sender"
     sender_display.admin_order_field = 'is_from_user'
 
@@ -172,41 +201,21 @@ class AIChatMessageAdmin(admin.ModelAdmin):
         return text
     short_text.short_description = "Message"
 
-
 # ====================== OTHER ADMINS ======================
 @admin.register(Specialty)
 class SpecialtyAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
-
 @admin.register(Insuarance)
 class InsuaranceAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
-
-@admin.register(Appointment)
-class AppointmentAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'doctor', 'start_time', 'encounter_mode', 'cost', 'payment_completed')
-    list_filter = ('encounter_mode', 'payment_completed', 'start_time')
-    search_fields = (
-        'patient__user__email',
-        'patient__first_name',
-        'doctor__user__email',
-        'doctor__first_name',
-        'rastuc_id'
-    )
-    raw_id_fields = ('patient', 'doctor', 'organization', 'organization_clinic')
-    date_hierarchy = 'start_time'
-    ordering = ('-start_time',)
-
-
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ('name', 'type')
     search_fields = ('name', 'type')
-
 
 @admin.register(OrganizationClinic)
 class OrganizationClinicAdmin(admin.ModelAdmin):
@@ -214,13 +223,11 @@ class OrganizationClinicAdmin(admin.ModelAdmin):
     search_fields = ('name', 'organization__name')
     raw_id_fields = ('organization',)
 
-
 @admin.register(PatientDoctorBookmark)
 class PatientDoctorBookmarkAdmin(admin.ModelAdmin):
     list_display = ('patient', 'doctor', 'created_at')
     list_filter = ('created_at',)
     raw_id_fields = ('patient', 'doctor')
-
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -230,13 +237,11 @@ class NotificationAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     raw_id_fields = ('patient',)
 
-
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     ordering = ('name',)
-
 
 @admin.register(County)
 class CountyAdmin(admin.ModelAdmin):

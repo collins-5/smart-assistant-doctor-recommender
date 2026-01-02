@@ -1,0 +1,16 @@
+mutation CancelAppointment($appointmentId: Int!, $reason: String) {
+  cancelAppointment(appointmentId: $appointmentId, reason: $reason) {
+    success
+    error
+    appointment {
+      id
+      status
+      statusDisplay
+      cancelledAt
+      cancellationReason
+      doctor {
+        fullName
+      }
+    }
+  }
+}

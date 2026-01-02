@@ -12,138 +12,156 @@ import uuid
 from graphene_file_upload.scalars import Upload
 from django.utils import timezone
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
     PatientDoctorBookmark, Notification, Country, County,
-    Insuarance, DoctorAvailability,
-    AIChatMessage, # ← NEW: Make sure this model exists in models.py
+    Insuarance, DoctorAvailability, AIChatMessage,
 )
-# ==================== TYPES ====================
+
 class CountryType(DjangoObjectType):
     class Meta:
         model = Country
         fields = ("id", "name", "code")
+
 class CountyType(DjangoObjectType):
     class Meta:
         model = County
         fields = ("id", "name", "country")
+
 class PatientType(DjangoObjectType):
     email = graphene.String()
     phone_number = graphene.String()
     profile_picture_url = graphene.String()
+
     class Meta:
         model = Patient
         fields = "__all__"
         convert_choices_to_enum = False
+
     def resolve_email(self, info):
         return self.user.email if self.user else None
+
     def resolve_phone_number(self, info):
         return self.user.phone_number if self.user else None
+
     def resolve_profile_picture_url(self, info):
         if self.profile_picture:
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
+
 class UserType(DjangoObjectType):
     patient = graphene.Field(PatientType)
+
     class Meta:
         model = User
         fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "is_active")
+
     def resolve_patient(self, info):
         try:
             return self.patient
         except AttributeError:
             return None
+
 class DoctorAvailabilityType(DjangoObjectType):
     is_booked = graphene.Boolean(description="True if an appointment overlaps this slot")
+
     class Meta:
         model = DoctorAvailability
         fields = ("id", "start_time", "end_time", "is_recurring")
+
     def resolve_is_booked(self, info):
         return Appointment.objects.filter(
             doctor=self.doctor,
             start_time__lt=self.end_time,
             end_time__gt=self.start_time,
         ).exists()
+
 class DoctorType(DjangoObjectType):
     profile_picture_url = graphene.String()
     availabilities = graphene.List(DoctorAvailabilityType)
+
     class Meta:
         model = Doctor
         fields = "__all__"
+
     def resolve_profile_picture_url(self, info):
         if self.profile_picture:
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
+
     def resolve_availabilities(self, info):
         now = timezone.now()
-        two_weeks_later = now + timedelta(weeks=2)  # or 4 for more visibility
-
-        # Get all base availabilities (recurring + non-recurring) from now
+        two_weeks_later = now + timedelta(weeks=2)
         base_slots = self.availabilities.filter(start_time__gte=now).order_by('start_time')
-
         result = []
         for base in base_slots:
             if not base.is_recurring:
                 result.append(base)
                 continue
-
-            # Generate future instances for recurring slots
             current = base.start_time
             while current <= two_weeks_later:
                 if base.recurrence_end_date and current.date() > base.recurrence_end_date:
                     break
                 virtual_slot = DoctorAvailability(
-                    id=base.id,  # same id so frontend knows it's recurring
+                    id=base.id,
                     doctor=base.doctor,
                     start_time=current,
                     end_time=current + timedelta(minutes=30),
                     is_recurring=True,
                 )
-                # Mark if already booked
                 virtual_slot.is_booked = Appointment.objects.filter(
                     doctor=base.doctor,
                     start_time__lt=virtual_slot.end_time,
                     end_time__gt=virtual_slot.start_time,
                 ).exists()
-
                 result.append(virtual_slot)
-                current += timedelta(days=7)  # weekly
-
-        # Sort all generated slots
+                current += timedelta(days=7)
         result.sort(key=lambda s: s.start_time)
         return result
+
 class AppointmentType(DjangoObjectType):
+    status_display = graphene.String(description="Human readable status")
+
     class Meta:
         model = Appointment
         fields = "__all__"
+
+    def resolve_status_display(self, info):
+        return self.get_status_display()
+
 class SpecialtyType(DjangoObjectType):
     class Meta:
         model = Specialty
         fields = "__all__"
+
 class InsuaranceType(DjangoObjectType):
     class Meta:
         model = Insuarance
         fields = "__all__"
+
 class NotificationType(graphene.ObjectType):
     id = graphene.Int(required=True)
     title = graphene.String(required=True)
     description = graphene.String(required=True)
     createdAt = graphene.DateTime(required=True)
     isRead = graphene.Boolean(required=True)
+
 class BookmarkedDoctorType(DoctorType):
     class Meta:
         model = Doctor
         fields = "__all__"
-# ==================== NEW: AI CHAT MESSAGE TYPE ====================
+
 class AIChatMessageType(DjangoObjectType):
     class Meta:
         model = AIChatMessage
         fields = ("id", "text", "is_from_user", "created_at")
-# ==================== INPUTS ====================
+
 class AppointmentInput(graphene.InputObjectType):
     doctor_id = graphene.Int(required=True)
     start_time = graphene.DateTime(required=True)
     encounter_mode = graphene.String(required=True)
+
 class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
@@ -154,6 +172,7 @@ class CreatePatientProfileInput(graphene.InputObjectType):
     phone_number = graphene.String()
     country_id = graphene.Int()
     county_id = graphene.Int()
+
 class EditProfileInput(graphene.InputObjectType):
     first_name = graphene.String()
     last_name = graphene.String()
@@ -164,18 +183,21 @@ class EditProfileInput(graphene.InputObjectType):
     phone_number = graphene.String()
     country_id = graphene.Int()
     county_id = graphene.Int()
+
 class CreateDoctorAvailabilityBlockInput(graphene.InputObjectType):
     doctor_id = graphene.Int()
     start_time = graphene.DateTime(required=True)
     end_time = graphene.DateTime(required=True)
     is_recurring = graphene.Boolean(default_value=False)
-# ==================== MUTATIONS ====================
+
 class SignIn(graphene.Mutation):
     class Arguments:
         email_or_phone_number = graphene.String(required=True)
         password = graphene.String(required=True)
+
     jwt_token = graphene.String()
     user = graphene.Field(UserType)
+
     @staticmethod
     def mutate(root, info, email_or_phone_number, password):
         user = authenticate(username=email_or_phone_number, password=password)
@@ -195,16 +217,19 @@ class SignIn(graphene.Mutation):
             raise Exception("Invalid credentials")
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
+
 class SignUp(graphene.Mutation):
     class Arguments:
         username = graphene.String(required=True)
         email = graphene.String(required=True)
         phone_number = graphene.String(required=True)
         password = graphene.String(required=True)
+
     jwt_token = graphene.String()
     user = graphene.Field(UserType)
     success = graphene.Boolean()
     error = graphene.String()
+
     @staticmethod
     def mutate(root, info, username, email, phone_number, password):
         if User.objects.filter(username__iexact=username).exists():
@@ -224,13 +249,16 @@ class SignUp(graphene.Mutation):
         user.save()
         token = get_token(user)
         return SignUp(success=True, error=None, jwt_token=token, user=user)
+
 class CreatePatientProfile(graphene.Mutation):
     class Arguments:
         input = CreatePatientProfileInput(required=True)
+
     patient = graphene.Field(PatientType)
     user = graphene.Field(UserType)
     success = graphene.Boolean()
     error = graphene.String()
+
     @staticmethod
     @login_required
     def mutate(root, info, input):
@@ -240,11 +268,11 @@ class CreatePatientProfile(graphene.Mutation):
         if input.email:
             if User.objects.exclude(pk=user.pk).filter(email__iexact=input.email).exists():
                 return CreatePatientProfile(success=False, error="Email already in use")
-            user.email = input.email.lower().strip()
+        user.email = input.email.lower().strip() if input.email else user.email
         if input.phone_number:
             if User.objects.exclude(pk=user.pk).filter(phone_number=input.phone_number).exists():
                 return CreatePatientProfile(success=False, error="Phone number already in use")
-            user.phone_number = input.phone_number
+        user.phone_number = input.phone_number
         user.first_name = input.first_name.strip()
         user.last_name = input.last_name.strip()
         user.save()
@@ -273,13 +301,16 @@ class CreatePatientProfile(graphene.Mutation):
             county=county,
         )
         return CreatePatientProfile(success=True, error=None, patient=patient, user=user)
+
 class EditProfile(graphene.Mutation):
     class Arguments:
         input = EditProfileInput(required=True)
+
     patient = graphene.Field(PatientType)
     user = graphene.Field(UserType)
     success = graphene.Boolean()
     error = graphene.String()
+
     @staticmethod
     @login_required
     def mutate(root, info, input):
@@ -322,10 +353,13 @@ class EditProfile(graphene.Mutation):
         patient.save()
         user.save()
         return EditProfile(patient=patient, user=user, success=True)
+
 class BookAppointment(graphene.Mutation):
     class Arguments:
         booking_args = AppointmentInput(required=True)
+
     appointment = graphene.Field(AppointmentType)
+
     @staticmethod
     @login_required
     def mutate(root, info, booking_args):
@@ -376,11 +410,14 @@ class BookAppointment(graphene.Mutation):
             }
         )
         return BookAppointment(appointment=appt)
+
 class BookmarkDoctor(graphene.Mutation):
     class Arguments:
         doctor_id = graphene.Int(required=True)
+
     success = graphene.Boolean()
     doctor = graphene.Field(DoctorType)
+
     @staticmethod
     @login_required
     def mutate(root, info, doctor_id):
@@ -390,10 +427,13 @@ class BookmarkDoctor(graphene.Mutation):
         doctor = Doctor.objects.get(pk=doctor_id)
         PatientDoctorBookmark.objects.get_or_create(patient=user.patient, doctor=doctor)
         return BookmarkDoctor(success=True, doctor=doctor)
+
 class UnbookmarkDoctor(graphene.Mutation):
     class Arguments:
         doctor_id = graphene.Int(required=True)
+
     success = graphene.Boolean()
+
     @staticmethod
     @login_required
     def mutate(root, info, doctor_id):
@@ -406,12 +446,15 @@ class UnbookmarkDoctor(graphene.Mutation):
             return UnbookmarkDoctor(success=True)
         except PatientDoctorBookmark.DoesNotExist:
             return UnbookmarkDoctor(success=False)
+
 class UploadProfilePicture(graphene.Mutation):
     class Arguments:
         file = Upload(required=True)
+
     success = graphene.Boolean()
     error = graphene.String()
     patient = graphene.Field(PatientType)
+
     @staticmethod
     @login_required
     def mutate(root, info, file):
@@ -425,10 +468,12 @@ class UploadProfilePicture(graphene.Mutation):
         patient.profile_picture = file
         patient.save()
         return UploadProfilePicture(success=True, error=None, patient=patient)
+
 class RemoveProfilePicture(graphene.Mutation):
     success = graphene.Boolean()
     error = graphene.String()
     patient = graphene.Field(PatientType)
+
     @staticmethod
     @login_required
     def mutate(root, info):
@@ -442,12 +487,15 @@ class RemoveProfilePicture(graphene.Mutation):
             patient.profile_picture = None
             patient.save()
         return RemoveProfilePicture(success=True, error=None, patient=patient)
+
 class CreateDoctorAvailabilityBlock(graphene.Mutation):
     class Arguments:
         input = CreateDoctorAvailabilityBlockInput(required=True)
+
     availabilities = graphene.List(DoctorAvailabilityType)
     success = graphene.Boolean()
     error = graphene.String()
+
     @staticmethod
     @login_required
     def mutate(root, info, input):
@@ -495,14 +543,16 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
             success=True,
             error=None
         )
-# ==================== NEW: AI CHAT MUTATION ====================
+
 class SendAIChatMessage(graphene.Mutation):
     class Arguments:
         text = graphene.String(required=True)
         is_from_user = graphene.Boolean(default_value=True)
+
     message = graphene.Field(AIChatMessageType)
     success = graphene.Boolean()
     error = graphene.String()
+
     @staticmethod
     @login_required
     def mutate(root, info, text, is_from_user=True):
@@ -516,52 +566,84 @@ class SendAIChatMessage(graphene.Mutation):
             is_from_user=is_from_user,
         )
         return SendAIChatMessage(message=message, success=True, error=None)
-# ==================== QUERY ====================
+
+class CancelAppointment(graphene.Mutation):
+    class Arguments:
+        appointment_id = graphene.Int(required=True)
+        reason = graphene.String()
+
+    appointment = graphene.Field(AppointmentType)
+    success = graphene.Boolean()
+    error = graphene.String()
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, appointment_id, reason=""):
+        user = info.context.user
+        try:
+            appointment = Appointment.objects.get(id=appointment_id, patient=user.patient)
+        except Appointment.DoesNotExist:
+            return CancelAppointment(success=False, error="Appointment not found or not yours")
+
+        try:
+            appointment.cancel(user, reason)
+        except ValidationError as e:
+            return CancelAppointment(success=False, error=str(e))
+
+        async_to_sync(get_channel_layer().group_send)(
+            f"notifications_{user.patient.id}",
+            {
+                "type": "send_notification",
+                "notification": {
+                    "id": appointment.id,
+                    "title": "Appointment Cancelled",
+                    "description": f"Your appointment with Dr. {appointment.doctor.full_name} has been cancelled.",
+                    "createdAt": timezone.now().isoformat(),
+                    "isRead": False,
+                }
+            }
+        )
+
+        return CancelAppointment(appointment=appointment, success=True)
+
 class Query(graphene.ObjectType):
     hello = graphene.String(default_value="Health Backend API is LIVE!")
     me = graphene.Field(UserType)
     doctors = graphene.List(DoctorType)
     doctor = graphene.Field(DoctorType, id=graphene.Int(required=True))
-    doctor_availabilities = graphene.List(
-        DoctorAvailabilityType,
-        id=graphene.Int(required=True),
-        description="Fetch all future availability slots for a specific doctor"
-    )
+    doctor_availabilities = graphene.List(DoctorAvailabilityType, id=graphene.Int(required=True))
     specialties = graphene.List(SpecialtyType)
     insuarances = graphene.List(InsuaranceType)
     patients = graphene.List(PatientType)
-    appointments = graphene.List(AppointmentType)
+    appointments = graphene.List(AppointmentType, status=graphene.String())
     bookmarked_doctors = graphene.List(BookmarkedDoctorType)
     countries = graphene.List(CountryType)
     counties = graphene.List(CountyType, country_id=graphene.Int())
-    # NEW: AI Chat History
-    ai_chat_messages = graphene.List(
-        AIChatMessageType,
-        description="Retrieve all AI chat messages for the current patient"
-    )
+    ai_chat_messages = graphene.List(AIChatMessageType)
+
     def resolve_me(self, info):
         return info.context.user if info.context.user.is_authenticated else None
+
     def resolve_doctors(self, info):
         return Doctor.objects.all()
+
     def resolve_doctor(self, info, id):
         try:
             return Doctor.objects.get(pk=id)
         except Doctor.DoesNotExist:
             return None
+
     def resolve_doctor_availabilities(self, info, id):
         try:
             doctor = Doctor.objects.get(pk=id)
             now = timezone.now()
             two_weeks_later = now + timedelta(weeks=2)
-
             base_slots = doctor.availabilities.filter(start_time__gte=now)
             result = []
-
             for base in base_slots:
                 if not base.is_recurring:
                     result.append(base)
                     continue
-
                 current = base.start_time
                 while current <= two_weeks_later:
                     if base.recurrence_end_date and current.date() > base.recurrence_end_date:
@@ -580,24 +662,45 @@ class Query(graphene.ObjectType):
                     ).exists()
                     result.append(virtual)
                     current += timedelta(days=7)
-
             result.sort(key=lambda s: s.start_time)
             return result
         except Doctor.DoesNotExist:
             return []
+
     def resolve_specialties(self, info):
         return Specialty.objects.all()
+
     def resolve_insuarances(self, info):
         return Insuarance.objects.all()
+
     def resolve_patients(self, info):
         if info.context.user.is_staff:
             return Patient.objects.all()
         return Patient.objects.none()
-    def resolve_appointments(self, info):
+
+    def resolve_appointments(self, info, status=None):
         user = info.context.user
         if not user.is_authenticated or not hasattr(user, "patient"):
             return Appointment.objects.none()
-        return Appointment.objects.filter(patient=user.patient).order_by('-start_time')
+        
+        queryset = Appointment.objects.filter(patient=user.patient)
+
+        # Force status update on every query
+        now = timezone.now()
+        for appt in queryset:
+            if appt.status in ['UPCOMING', 'ONGOING']:
+                if appt.start_time <= now <= appt.end_time:
+                    appt.status = 'ONGOING'
+                elif now > appt.end_time:
+                    appt.status = 'COMPLETED'
+                if appt.status != appt._state.fields_cache.get('status'):
+                    appt.save(update_fields=['status'])
+
+        if status:
+            queryset = queryset.filter(status=status.upper())
+
+        return queryset.order_by('-start_time')
+
     @login_required
     def resolve_bookmarked_doctors(self, info):
         user = info.context.user
@@ -606,26 +709,29 @@ class Query(graphene.ObjectType):
         patient = user.patient
         bookmarks = PatientDoctorBookmark.objects.filter(patient=patient).values_list("doctor_id", flat=True)
         return Doctor.objects.filter(id__in=bookmarks).order_by('-patientdoctorbookmark__created_at')
+
     def resolve_countries(root, info):
         return Country.objects.all()
+
     def resolve_counties(root, info, country_id=None):
         if country_id:
             return County.objects.filter(country_id=country_id)
         return County.objects.all()
-    # NEW: Resolve AI chat messages
+
     @login_required
     def resolve_ai_chat_messages(self, info):
         user = info.context.user
         if not hasattr(user, "patient"):
             return AIChatMessage.objects.none()
         return user.patient.ai_chat_messages.all().order_by('created_at')
-# ==================== SUBSCRIPTION ====================
+
 class Subscription(graphene.ObjectType):
     retrieve_new_notifications = graphene.Field(
         NotificationType,
         patient_id=graphene.Int(required=True),
         jwt_token=graphene.String(required=True),
     )
+
     @staticmethod
     @login_required
     async def subscribe_retrieve_new_notifications(root, info, patient_id, jwt_token):
@@ -633,7 +739,7 @@ class Subscription(graphene.ObjectType):
         if not hasattr(user, "patient") or user.patient.id != patient_id:
             raise Exception("Unauthorized")
         return [f"notifications_{patient_id}"]
-# ==================== MUTATION ROOT ====================
+
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
@@ -648,7 +754,7 @@ class Mutation(graphene.ObjectType):
     upload_profile_picture = UploadProfilePicture.Field()
     remove_profile_picture = RemoveProfilePicture.Field()
     create_doctor_availability_block = CreateDoctorAvailabilityBlock.Field()
-    # NEW
     send_ai_chat_message = SendAIChatMessage.Field()
-# ==================== FINAL SCHEMA ====================
+    cancel_appointment = CancelAppointment.Field()
+
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

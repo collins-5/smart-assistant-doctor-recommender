@@ -1,4 +1,4 @@
-// src/hooks/useMyAppointments.ts
+// src/lib/hooks/useMyAppointments.ts
 import { useQuery } from '@apollo/client';
 import { GetMyAppointmentsDocument } from '../graphql/generated/graphql';
 
@@ -10,6 +10,8 @@ export type Appointment = {
     cost: number;
     paymentCompleted: boolean;
     rastucId: string;
+    status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+    statusDisplay: string;
     doctor: {
         id: number;
         fullName: string;
@@ -20,9 +22,10 @@ export type Appointment = {
     };
 };
 
-export const useMyAppointments = () => {
+export const useMyAppointments = (status?: string) => {
     const { data, loading, error, refetch } = useQuery(GetMyAppointmentsDocument, {
-        fetchPolicy: 'cache-and-network', // always get fresh data but show cached first
+        variables: { status: status || null },
+        fetchPolicy: 'cache-and-network',
     });
 
     const appointments: Appointment[] = data?.appointments || [];

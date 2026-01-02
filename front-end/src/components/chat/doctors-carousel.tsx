@@ -47,7 +47,7 @@ const DoctorsCarousel = () => {
   };
 
   const renderItem: ListRenderItem<Doctor> = ({ item }) => (
-    <View className="px-0 mb-2">
+    <View className=" mb-2">
       <DoctorCard
         id={item.id}
         fullName={item.fullName}
@@ -97,6 +97,7 @@ const DoctorsCarousel = () => {
 
   const visibleDoctors = doctors.slice(0, 10);
   const hasMore = doctors.length > 10;
+
 
   return (
     <View className="w-full -mx-4">
