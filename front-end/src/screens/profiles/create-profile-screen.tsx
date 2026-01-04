@@ -1,11 +1,13 @@
 // front-end/src/app/(protected)/(profiles)/create-profile.tsx
+
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Alert,
   Platform,
+  Image,
+  TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
@@ -14,19 +16,15 @@ import { z } from "zod";
 import { useEffect, useState } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
+
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-} from "~/components/ui/select";
+
 import { useCreateProfile } from "~/lib/hooks/useCreateProfile";
 import { useCountries } from "~/lib/hooks/useCountries";
 import Icon from "~/components/ui/icon";
+import { Select } from "~/components/ui/bottom-sheets/select";
 
 const createProfileSchema = z.object({
   firstName: z.string().min(1, "First name required"),
@@ -47,10 +45,11 @@ export default function CreateProfileScreen() {
   const [step, setStep] = useState<1 | 2>(1);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
+
   const { submit, loading } = useCreateProfile();
   const {
     countries,
-    getCountiesByCountryName, // ← Now using name-based function
+    getCountiesByCountryName,
     loading: locationsLoading,
   } = useCountries();
 
@@ -75,23 +74,35 @@ export default function CreateProfileScreen() {
     },
   });
 
-  // Watch countryId (string like "233")
   const watchedCountryId = watch("countryId");
-
-  // Derive country name from selected countryId
   const selectedCountryName = watchedCountryId
     ? countries.find((c) => c.id.toString() === watchedCountryId)?.name
     : null;
 
-  // Get counties using country name
   const countiesInSelectedCountry = selectedCountryName
     ? getCountiesByCountryName(selectedCountryName)
     : [];
 
-  // Reset county when country changes
   useEffect(() => {
     setValue("countyId", null);
   }, [watchedCountryId, setValue]);
+
+  // Select options
+  const countryOptions = countries.map((c) => ({
+    value: c.id.toString(),
+    label: c.name,
+  }));
+
+  const countyOptions = countiesInSelectedCountry.map((c) => ({
+    value: c.id.toString(),
+    label: c.name,
+  }));
+
+  const genderOptions = [
+    { value: "M", label: "Male" },
+    { value: "F", label: "Female" },
+    { value: "O", label: "Other" },
+  ];
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -106,17 +117,17 @@ export default function CreateProfileScreen() {
         countryId: data.countryId || undefined,
         countyId: data.countyId || undefined,
       });
-     Alert.alert("Success", "Profile created successfully!", [
-       {
-         text: "OK",
-         onPress: () => {
-           router.replace({
-             pathname: "/(tabs)/profile",
-             params: { refetch: Date.now().toString() }, // Triggers refetch
-           });
-         },
-       },
-     ]);
+      Alert.alert("Success", "Profile created successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            router.replace({
+              pathname: "/(tabs)/profile",
+              params: { refetch: Date.now().toString() },
+            });
+          },
+        },
+      ]);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to create profile");
     }
@@ -134,338 +145,275 @@ export default function CreateProfileScreen() {
   if (locationsLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading locations...</Text>
+        <Text className="text-foreground text-lg">Loading locations...</Text>
       </View>
     );
   }
 
-  const StepIndicator = () => (
-    <View className="flex-row justify-center items-center gap-4 my-6">
-      {[1, 2].map((i) => (
-        <View key={i} className="flex-row items-center">
-          <View
-            className={`w-10 h-10 rounded-full items-center justify-center ${
-              step === i ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <Text
-              className={`font-bold ${step === i ? "text-white" : "text-foreground"}`}
-            >
-              {i}
-            </Text>
-          </View>
-          {i === 1 && <View className="w-20 h-1 bg-muted mx-2" />}
-        </View>
-      ))}
-    </View>
-  );
-
   return (
     <KeyboardAvoidingWrapper>
       <ScrollView className="flex-1 bg-background">
-        <View className="flex-row bg-primary p-4">
-          <Button
-            onPress={() => router.back()}
-            className="w-12"
-            rightIcon={<Icon name="arrow-left" size={32} />}
-          />
-          <View className="flex justify-center items-center flex-1">
-            <Text className="text-primary-foreground text-3xl font-extrabold">
+        {/* Header with Placeholder Avatar */}
+        <View className="bg-primary pt-12 pb-8 px-6">
+          <View className="flex-row items-center justify-between">
+            <Button
+              onPress={() => router.back()}
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              leftIcon={<Icon name="arrow-left" size={28} color="white" />}
+            />
+            <Text className="text-white text-2xl font-bold">
               Create Profile
             </Text>
+            <View className="w-10" />
           </View>
-          <View className="w-12" />
+
+          <View className="items-center mt-8">
+            {/* Placeholder Avatar */}
+            <View className="w-32 h-32 rounded-full bg-white/20 items-center justify-center border-4 border-white shadow-2xl">
+              <Text className="text-white text-5xl font-bold">?</Text>
+            </View>
+
+            <Text className="text-white text-2xl font-bold mt-4">
+              Welcome! Let's get started
+            </Text>
+            <Text className="text-white/80 text-base mt-2">
+              Fill in your details below
+            </Text>
+          </View>
         </View>
 
-        <View className="px-6 py-8">
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">
-                Complete Your Profile
-              </CardTitle>
-              <StepIndicator />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {step === 1 && (
-                <>
-                  {/* Step 1 fields unchanged */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="First Name"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          error={errors.firstName?.message}
-                        />
-                      )}
-                    />
-                  </View>
+        {/* Step Indicator */}
+        <View className="flex-row justify-center my-8 gap-8">
+          {[1, 2].map((i) => (
+            <View key={i} className="items-center">
+              <View
+                className={`w-12 h-12 rounded-full items-center justify-center ${
+                  step >= i ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <Text
+                  className={`font-bold text-lg ${step >= i ? "text-white" : "text-muted-foreground"}`}
+                >
+                  {i}
+                </Text>
+              </View>
+              <Text className="text-sm text-muted-foreground mt-2">
+                {i === 1 ? "Personal Info" : "Location"}
+              </Text>
+            </View>
+          ))}
+          <View className="absolute top-6 left-20 right-20 h-0.5 bg-muted -z-10" />
+          <View className="absolute top-6 left-20 w-32 h-0.5 bg-primary -z-10" />
+        </View>
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Last Name"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          error={errors.lastName?.message}
-                        />
-                      )}
-                    />
-                  </View>
+        {/* Form Content */}
+        <View className="px-6 pb-10">
+          {step === 1 && (
+            <View className="space-y-6">
+              <Text className="text-lg font-semibold text-foreground mb-4">
+                Personal Information
+              </Text>
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="middleName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Middle Name (Optional)"
-                          value={field.value || ""}
-                          onChangeText={field.onChange}
-                        />
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="firstName"
+                render={({ field }) => (
+                  <Input
+                    label="First Name"
+                    placeholder="Enter your first name"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.firstName?.message}
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="dateOfBirth"
-                      render={({ field }) => (
-                        <>
-                          <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            className="border border-input rounded-xl px-4 py-4 bg-background"
-                          >
-                            <Text
-                              className={
-                                field.value
-                                  ? "text-foreground"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {field.value
-                                ? format(new Date(field.value), "PPP")
-                                : "Date of Birth"}
-                            </Text>
-                          </TouchableOpacity>
-                          {errors.dateOfBirth && (
-                            <Text className="text-red-500 text-sm mt-1">
-                              {errors.dateOfBirth.message}
-                            </Text>
-                          )}
-                          {showDatePicker && (
-                            <DateTimePicker
-                              value={date}
-                              mode="date"
-                              display={
-                                Platform.OS === "ios" ? "inline" : "default"
-                              }
-                              maximumDate={new Date()}
-                              onChange={onDateChange}
-                            />
-                          )}
-                        </>
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="lastName"
+                render={({ field }) => (
+                  <Input
+                    label="Last Name"
+                    placeholder="Enter your last name"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.lastName?.message}
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="gender"
-                      render={({ field }) => (
-                        <View className="space-y-3">
-                          <Text className="text-foreground/80 font-medium">
-                            Gender
-                          </Text>
-                          <View className="flex-row justify-between">
-                            {(["M", "F", "O"] as const).map((g) => (
-                              <TouchableOpacity
-                                key={g}
-                                onPress={() => field.onChange(g)}
-                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${
-                                  field.value === g
-                                    ? "bg-primary border-primary"
-                                    : "border-muted"
-                                }`}
-                              >
-                                <Text
-                                  className={`text-center font-medium ${
-                                    field.value === g
-                                      ? "text-white"
-                                      : "text-foreground"
-                                  }`}
-                                >
-                                  {g === "M"
-                                    ? "Male"
-                                    : g === "F"
-                                      ? "Female"
-                                      : "Other"}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                          {errors.gender && (
-                            <Text className="text-red-500 text-sm">
-                              {errors.gender.message}
-                            </Text>
-                          )}
-                        </View>
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="middleName"
+                render={({ field }) => (
+                  <Input
+                    label="Middle Name (Optional)"
+                    placeholder="Enter middle name"
+                    value={field.value || ""}
+                    onChangeText={field.onChange}
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="email"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Email"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          error={errors.email?.message}
-                        />
-                      )}
-                    />
+              <Controller
+                control={control}
+                name="dateOfBirth"
+                render={() => (
+                  <View>
+                    <Text className="text-sm font-medium text-foreground mb-2">
+                      Date of Birth
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setShowDatePicker(true)}
+                      className="border border-border rounded-xl px-4 py-4 bg-card"
+                    >
+                      <Text
+                        className={
+                          watch("dateOfBirth")
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {watch("dateOfBirth")
+                          ? format(new Date(watch("dateOfBirth")), "PPP")
+                          : "Select your date of birth"}
+                      </Text>
+                    </TouchableOpacity>
+                    {errors.dateOfBirth && (
+                      <Text className="text-destructive text-sm mt-1">
+                        {errors.dateOfBirth.message}
+                      </Text>
+                    )}
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display={Platform.OS === "ios" ? "inline" : "default"}
+                        maximumDate={new Date()}
+                        onChange={onDateChange}
+                      />
+                    )}
                   </View>
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Phone Number"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          keyboardType="phone-pad"
-                          error={errors.phoneNumber?.message}
-                        />
-                      )}
-                    />
-                  </View>
+              {/* Gender using Select */}
+              <Controller
+                control={control}
+                name="gender"
+                render={({ field }) => (
+                  <Select
+                    label="Gender"
+                    placeholder="Select your gender"
+                    data={genderOptions}
+                    value={field.value}
+                    onChange={(val: string) =>
+                      field.onChange(val as "M" | "F" | "O")
+                    }
+                  />
+                )}
+              />
 
-                  <View className="mt-6">
-                    <Button
-                      text="Next"
-                      className="text-xl"
-                      rightIcon={<Icon name="arrow-right" />}
-                      onPress={() => setStep(2)}
-                      disabled={loading || !isDirty}
-                    />
-                  </View>
-                </>
-              )}
+              <Controller
+                control={control}
+                name="email"
+                render={({ field }) => (
+                  <Input
+                    label="Email Address"
+                    placeholder="you@example.com"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={errors.email?.message}
+                  />
+                )}
+              />
 
-              {step === 2 && (
-                <>
-                  <Text className="text-lg font-medium text-foreground mb-4">
-                    Your Location
-                  </Text>
+              <Controller
+                control={control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <Input
+                    label="Phone Number"
+                    placeholder="+254 712 345 678"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    keyboardType="phone-pad"
+                    error={errors.phoneNumber?.message}
+                  />
+                )}
+              />
+              <View className="mt-4">
+                <Button
+                  text="Continue to Location"
+                  onPress={() => setStep(2)}
+                  size="lg"
+                  rightIcon={
+                    <Icon name="arrow-right" size={20} color="white" />
+                  }
+                />
+              </View>
+            </View>
+          )}
 
-                  {/* Country Select */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="countryId"
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select Country"
-                        >
-                          <SelectTrigger>
-                            <Text>
-                              {field.value
-                                ? countries.find(
-                                    (c) => c.id.toString() === field.value
-                                  )?.name || "Select Country"
-                                : "Select Country"}
-                            </Text>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {countries.map((c) => (
-                              <SelectItem
-                                key={c.id}
-                                label={c.name}
-                                value={c.id.toString()}
-                              />
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </View>
+          {step === 2 && (
+            <View className="space-y-6">
+              <Text className="text-lg font-semibold text-foreground">
+                Your Location
+              </Text>
 
-                  {/* County Select - Now using country name */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="countyId"
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            !selectedCountryName
-                              ? "First select country"
-                              : "Select County"
-                          }
-                          disabled={!selectedCountryName}
-                        >
-                          <SelectTrigger>
-                            <Text>
-                              {field.value
-                                ? countiesInSelectedCountry.find(
-                                    (c) => c.id.toString() === field.value
-                                  )?.name || "Select County"
-                                : selectedCountryName
-                                  ? "Select County"
-                                  : "First select country"}
-                            </Text>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {countiesInSelectedCountry.map((county) => (
-                              <SelectItem
-                                key={county.id}
-                                label={county.name}
-                                value={county.id.toString()}
-                              />
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="countryId"
+                render={({ field }) => (
+                  <Select
+                    label="Country"
+                    placeholder="Select your country"
+                    data={countryOptions}
+                    value={field.value || ""}
+                    onChange={(val: string) => field.onChange(val || null)}
+                  />
+                )}
+              />
 
-                  <View className="flex-row justify-between mt-8 gap-3">
-                    <Button
-                      text="Back"
-                      onPress={() => setStep(1)}
-                      variant="outline"
-                      className="flex-1"
-                    />
-                    <Button
-                      text={loading ? "Creating..." : "Create Profile"}
-                      onPress={handleSubmit(onSubmit)}
-                      disabled={loading || !isDirty}
-                      className="flex-1"
-                    />
-                  </View>
-                </>
-              )}
-            </CardContent>
-          </Card>
+              <Controller
+                control={control}
+                name="countyId"
+                render={({ field }) => (
+                  <Select
+                    label="County"
+                    placeholder={
+                      selectedCountryName
+                        ? "Select your county"
+                        : "First select country"
+                    }
+                    data={countyOptions}
+                    value={field.value || ""}
+                    onChange={(val: string) => field.onChange(val || null)}
+                    disabled={!selectedCountryName}
+                  />
+                )}
+              />
+
+              <View className="flex-row gap-4 mt-4">
+                <Button
+                  text="Back"
+                  variant="outline"
+                  onPress={() => setStep(1)}
+                  className="flex-1 self-center"
+                />
+                <Button
+                  text={loading ? "Creating..." : "Create Profile"}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={loading || !isDirty}
+                  className="flex-1 self-center"
+                />
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingWrapper>

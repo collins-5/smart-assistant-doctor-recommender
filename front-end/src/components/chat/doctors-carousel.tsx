@@ -10,6 +10,7 @@ import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
 import SkeletonList from "../core/SkeletonList";
 import { SheetManager } from "react-native-actions-sheet";
+import { Separator } from "../ui/separator";
 
 interface Doctor {
   id: number;
@@ -26,7 +27,7 @@ interface Doctor {
 }
 
 const DoctorsCarousel = () => {
-  const { doctors, loading } = useDoctors();
+  const { allDoctors:doctors, loading } = useDoctors();
   const navigation = useNavigation<any>();
 
   const goToDoctorProfile = (doctorId: number) => {
@@ -72,7 +73,7 @@ const DoctorsCarousel = () => {
   if (loading) {
     return (
       <View className="w-full -mx-4">
-        <Text className="px-4 text-xl font-bold text-cyan-900 mb-5">
+        <Text className="px-4  text-xl font-bold text-primary mb-5">
           Available Doctors
         </Text>
         <SkeletonList skeletonComponent={DoctorCardSkeleton} count={3} />
@@ -98,12 +99,13 @@ const DoctorsCarousel = () => {
   const visibleDoctors = doctors.slice(0, 10);
   const hasMore = doctors.length > 10;
 
-
   return (
     <View className="w-full -mx-4">
-      <Text className="px-4 text-xl font-bold text-cyan-900 mb-5">
-        Available Doctors
-      </Text>
+      <View className="bg-accent ml-4 rounded-2xl mb-2 border-1 border-primary">
+        <Text className=" py-2 text-xl self-center font-bold text-primary ">
+          Available Doctors
+        </Text>
+      </View>
 
       <FlashList
         data={visibleDoctors}

@@ -1,11 +1,8 @@
-// src/components/SearchBar.tsx (create this new file)
+// src/components/SearchBar.tsx
+
 import React from "react";
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { Input } from "~/components/ui/input";
 import Icon from "~/components/ui/icon";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -13,45 +10,56 @@ interface SearchBarProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onLocationPress: () => void;
-  locationLoading: boolean;
+  locationLoading?: boolean;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   searchQuery,
   setSearchQuery,
   onLocationPress,
-  locationLoading,
+  locationLoading = false,
 }) => {
   return (
-    <View className="px-4 py-4  w-full bg-background border-b border-border">
-      <View className="flex-row items-center bg-muted rounded-full px-4 py-3">
-        <Icon name="magnify" size={20} color="#666" />
-        <TextInput
-          placeholder="Search by name, specialty, or location..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          className="flex-1 ml-3 mr-2 text-foreground text-base"
-          placeholderTextColor="#999"
-          clearButtonMode="while-editing"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {/* Clear button */}
+    <View className="px-4 py-2 w-full bg-background">
+      <View className="flex-row items-center bg-muted rounded-full px-1 py-1 shadow-sm">
+        {/* Main Search Input */}
+        <View className="flex-1">
+          <Input
+            placeholder="Search by name, specialty, or location..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            className="border-0 bg-transparent px-3 py-3 text-base"
+            placeholderClassName="text-muted-foreground"
+            iconComponent={<Icon name="magnify" size={20} />}
+            // Remove default border and background since we're using the outer pill
+          />
+        </View>
+
+        {/* Clear Button (appears only when there's text) */}
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
+          <TouchableOpacity
+            onPress={() => setSearchQuery("")}
+            className="px-2"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="close-circle" size={20} color="#666" />
           </TouchableOpacity>
         )}
+
+        {/* Vertical divider */}
+        <View className="w-px h-8 bg-border mx-1" />
+
         {/* Location Button */}
         <TouchableOpacity
           onPress={onLocationPress}
           disabled={locationLoading}
-          className="ml-3"
+          className="px-3 py-3"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           {locationLoading ? (
             <ActivityIndicator size="small" color="#0d9488" />
           ) : (
-            <Icon name="map-marker-radius-outline" size={24} color="#0d9488" />
+            <Icon name="map-marker-radius-outline" size={24} className="text-destructive" />
           )}
         </TouchableOpacity>
       </View>

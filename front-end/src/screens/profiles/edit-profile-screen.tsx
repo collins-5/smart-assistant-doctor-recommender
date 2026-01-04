@@ -1,11 +1,13 @@
 // front-end/src/app/(protected)/(profiles)/edit-profile.tsx
+
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Alert,
   Platform,
+  Image,
+  TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
@@ -17,19 +19,13 @@ import { format } from "date-fns";
 
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-} from "~/components/ui/select";
 
 import { useEditProfile } from "~/lib/hooks/useEditProfile";
 import { useProfile } from "~/lib/hooks/useProfile";
 import { useCountries } from "~/lib/hooks/useCountries";
 import Icon from "~/components/ui/icon";
+import { Select } from "~/components/ui/bottom-sheets/select";
 
 const editProfileSchema = z.object({
   firstName: z.string().min(1, "First name required"),
@@ -45,12 +41,6 @@ const editProfileSchema = z.object({
 
 type FormData = z.infer<typeof editProfileSchema>;
 
-type ProfileWithLocation = ReturnType<typeof useProfile>["profile"] & {
-  middleName?: string | null;
-  countryId?: number | null;
-  countyId?: number | null;
-};
-
 export default function EditProfileScreen() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
@@ -61,12 +51,11 @@ export default function EditProfileScreen() {
   const { profile: rawProfile, loading: profileLoading } = useProfile();
   const {
     countries,
-    getCountiesByCountryName, // ← Now using name-based version
+    getCountiesByCountryName,
     loading: locationsLoading,
   } = useCountries();
 
-  const profile = rawProfile as ProfileWithLocation | null;
-
+  const profile = rawProfile as any;
   const hasReset = useRef(false);
 
   const {
@@ -78,38 +67,38 @@ export default function EditProfileScreen() {
     formState: { errors, isDirty },
   } = useForm<FormData>({
     resolver: zodResolver(editProfileSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      middleName: "",
-      email: "",
-      phoneNumber: "",
-      dateOfBirth: "",
-      gender: "O",
-      countryId: null,
-      countyId: null,
-    },
   });
 
-  // Watch countryId from form
   const watchedCountryId = watch("countryId");
-
-  // Derive country name from selected countryId
   const selectedCountryName = watchedCountryId
-    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name || null
+    ? countries.find((c) => c.id.toString() === watchedCountryId)?.name
     : null;
 
-  // Get counties using country name
   const countiesInSelectedCountry = selectedCountryName
     ? getCountiesByCountryName(selectedCountryName)
     : [];
 
-  // Reset county when country changes
   useEffect(() => {
     setValue("countyId", null);
   }, [watchedCountryId, setValue]);
 
-  // Populate form with existing profile data
+  // Select options
+  const countryOptions = countries.map((c) => ({
+    value: c.id.toString(),
+    label: c.name,
+  }));
+
+  const countyOptions = countiesInSelectedCountry.map((c) => ({
+    value: c.id.toString(),
+    label: c.name,
+  }));
+
+  const genderOptions = [
+    { value: "M", label: "Male" },
+    { value: "F", label: "Female" },
+    { value: "O", label: "Other" },
+  ];
+
   useEffect(() => {
     if (profile && !hasReset.current) {
       const dob = profile.dateOfBirth
@@ -146,9 +135,9 @@ export default function EditProfileScreen() {
         countryId: data.countryId || undefined,
         countyId: data.countyId || undefined,
       });
-
-      // Optional: trigger refetch on profile tab when going back
-      router.back();
+      Alert.alert("Success", "Profile updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to update profile");
     }
@@ -166,331 +155,285 @@ export default function EditProfileScreen() {
   if (profileLoading || locationsLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-foreground">Loading...</Text>
+        <Text className="text-foreground text-lg">Loading profile...</Text>
       </View>
     );
   }
 
-  const StepIndicator = () => (
-    <View className="flex-row justify-center items-center gap-4 my-6">
-      {[1, 2].map((i) => (
-        <View key={i} className="flex-row items-center">
-          <View
-            className={`w-10 h-10 rounded-full items-center justify-center ${
-              step === i ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <Text
-              className={`font-bold ${step === i ? "text-white" : "text-foreground"}`}
-            >
-              {i}
-            </Text>
-          </View>
-          {i === 1 && <View className="w-20 h-1 bg-muted mx-2" />}
-        </View>
-      ))}
-    </View>
-  );
-
   return (
     <KeyboardAvoidingWrapper>
       <ScrollView className="flex-1 bg-background">
-        <View className="flex-row bg-primary p-4">
-          <Button
-            onPress={() => (step === 1 ? router.back() : setStep(1))}
-            className="w-12"
-            rightIcon={<Icon name="arrow-left" size={32} />}
-          />
-          <View className="flex justify-center items-center flex-1">
-            <Text className="text-primary-foreground text-3xl font-extrabold">
-              Edit Profile
+        {/* Header with Avatar */}
+        <View className="bg-primary pt-12 pb-8 px-6">
+          <View className="flex-row items-center justify-between">
+            <Button
+              onPress={() => (step === 1 ? router.back() : setStep(1))}
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              leftIcon={<Icon name="arrow-left" size={28} color="white" />}
+            />
+            <Text className="text-white text-2xl font-bold">Edit Profile</Text>
+            <View className="w-10" />
+          </View>
+
+          <View className="items-center mt-8">
+            <View className="relative">
+              {profile?.profilePictureUrl ? (
+                <Image
+                  source={{ uri: profile.profilePictureUrl }}
+                  className="w-32 h-32 rounded-full border-4 border-white shadow-2xl"
+                />
+              ) : (
+                <View className="w-32 h-32 rounded-full bg-white/20 items-center justify-center border-4 border-white">
+                  <Text className="text-white text-5xl font-bold">
+                    {profile?.firstName?.[0]?.toUpperCase() || "U"}
+                    {profile?.lastName?.[0]?.toUpperCase() || ""}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Text className="text-white text-2xl font-bold mt-4">
+              {profile?.firstName} {profile?.lastName}
+            </Text>
+            <Text className="text-white/80 text-base mt-1">
+              {profile?.email || "No email"}
             </Text>
           </View>
-          <View className="w-12" />
         </View>
 
-        <View className="px-6 py-8">
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">
-                Edit Profile
-              </CardTitle>
-              <StepIndicator />
-            </CardHeader>
+        {/* Step Indicator */}
+        <View className="flex-row justify-center my-8 gap-8">
+          {[1, 2].map((i) => (
+            <View key={i} className="items-center">
+              <View
+                className={`w-12 h-12 rounded-full items-center justify-center ${
+                  step >= i ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <Text
+                  className={`font-bold text-lg ${step >= i ? "text-white" : "text-muted-foreground"}`}
+                >
+                  {i}
+                </Text>
+              </View>
+              <Text className="text-sm text-muted-foreground mt-2">
+                {i === 1 ? "Personal Info" : "Location"}
+              </Text>
+            </View>
+          ))}
+          <View className="absolute top-6 left-20 right-20 h-0.5 bg-muted -z-10" />
+          <View className="absolute top-6 left-20 w-32 h-0.5 bg-primary -z-10" />
+        </View>
 
-            <CardContent className="space-y-4">
-              {step === 1 && (
-                <>
-                  {/* Step 1: Personal Info (unchanged) */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="First Name"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          error={errors.firstName?.message}
-                        />
-                      )}
-                    />
+        {/* Form Content */}
+        <View className="px-6 pb-10">
+          {step === 1 && (
+            <View className="space-y-6">
+              <Text className="text-lg font-semibold text-foreground mb-4">
+                Personal Information
+              </Text>
+
+              <Controller
+                control={control}
+                name="firstName"
+                render={({ field }) => (
+                  <Input
+                    label="First Name"
+                    placeholder="Enter first name"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.firstName?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="lastName"
+                render={({ field }) => (
+                  <Input
+                    label="Last Name"
+                    placeholder="Enter last name"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.lastName?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="middleName"
+                render={({ field }) => (
+                  <Input
+                    label="Middle Name (Optional)"
+                    placeholder="Enter middle name"
+                    value={field.value || ""}
+                    onChangeText={field.onChange}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="dateOfBirth"
+                render={() => (
+                  <View>
+                    <Text className="text-sm font-medium text-foreground mb-2">
+                      Date of Birth
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setShowDatePicker(true)}
+                      className="border border-border rounded-xl px-4 py-4 bg-card"
+                    >
+                      <Text
+                        className={
+                          watch("dateOfBirth")
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {watch("dateOfBirth")
+                          ? format(new Date(watch("dateOfBirth")), "PPP")
+                          : "Select date of birth"}
+                      </Text>
+                    </TouchableOpacity>
+                    {errors.dateOfBirth && (
+                      <Text className="text-destructive text-sm mt-1">
+                        {errors.dateOfBirth.message}
+                      </Text>
+                    )}
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display={Platform.OS === "ios" ? "inline" : "default"}
+                        maximumDate={new Date()}
+                        onChange={onDateChange}
+                      />
+                    )}
                   </View>
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Last Name"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          error={errors.lastName?.message}
-                        />
-                      )}
-                    />
-                  </View>
+              {/* Gender now uses the same Select component */}
+              <Controller
+                control={control}
+                name="gender"
+                render={({ field }) => (
+                  <Select
+                    label="Gender"
+                    placeholder="Select your gender"
+                    data={genderOptions}
+                    value={field.value}
+                    onChange={(val: string) =>
+                      field.onChange(val as "M" | "F" | "O")
+                    }
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="middleName"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Middle Name (Optional)"
-                          value={field.value || ""}
-                          onChangeText={field.onChange}
-                        />
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="email"
+                render={({ field }) => (
+                  <Input
+                    label="Email Address"
+                    placeholder="you@example.com"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={errors.email?.message}
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="dateOfBirth"
-                      render={({ field }) => (
-                        <>
-                          <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            className="border border-input rounded-xl px-4 py-4 bg-background"
-                          >
-                            <Text
-                              className={
-                                field.value
-                                  ? "text-foreground"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {field.value
-                                ? format(new Date(field.value), "PPP")
-                                : "Date of Birth"}
-                            </Text>
-                          </TouchableOpacity>
-                          {errors.dateOfBirth && (
-                            <Text className="text-red-500 text-sm mt-1">
-                              {errors.dateOfBirth.message}
-                            </Text>
-                          )}
-                          {showDatePicker && (
-                            <DateTimePicker
-                              value={date}
-                              mode="date"
-                              display={
-                                Platform.OS === "ios" ? "inline" : "default"
-                              }
-                              maximumDate={new Date()}
-                              onChange={onDateChange}
-                            />
-                          )}
-                        </>
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <Input
+                    label="Phone Number"
+                    placeholder="+254 712 345 678"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    keyboardType="phone-pad"
+                    error={errors.phoneNumber?.message}
+                  />
+                )}
+              />
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="gender"
-                      render={({ field }) => (
-                        <View className="space-y-3">
-                          <Text className="text-foreground/80 font-medium">
-                            Gender
-                          </Text>
-                          <View className="flex-row justify-between">
-                            {(["M", "F", "O"] as const).map((g) => (
-                              <TouchableOpacity
-                                key={g}
-                                onPress={() => field.onChange(g)}
-                                className={`flex-1 mx-1 py-4 rounded-xl border-2 ${field.value === g ? "bg-primary border-primary" : "border-muted"}`}
-                              >
-                                <Text
-                                  className={`text-center font-medium ${field.value === g ? "text-white" : "text-foreground"}`}
-                                >
-                                  {g === "M"
-                                    ? "Male"
-                                    : g === "F"
-                                      ? "Female"
-                                      : "Other"}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                          {errors.gender && (
-                            <Text className="text-red-500 text-sm">
-                              {errors.gender.message}
-                            </Text>
-                          )}
-                        </View>
-                      )}
-                    />
-                  </View>
+              <View className="mt-3">
+                <Button
+                  text="Continue to Location"
+                  onPress={() => setStep(2)}
+                  size="lg"
+                  rightIcon={
+                    <Icon name="arrow-right" size={20} color="white" />
+                  }
+                />
+              </View>
+            </View>
+          )}
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="email"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Email"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          error={errors.email?.message}
-                        />
-                      )}
-                    />
-                  </View>
+          {step === 2 && (
+            <View className="space-y-6">
+              <Text className="text-lg font-semibold text-foreground">
+                Your Location
+              </Text>
 
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Phone Number"
-                          value={field.value}
-                          onChangeText={field.onChange}
-                          keyboardType="phone-pad"
-                          error={errors.phoneNumber?.message}
-                        />
-                      )}
-                    />
-                  </View>
+              <Controller
+                control={control}
+                name="countryId"
+                render={({ field }) => (
+                  <Select
+                    label="Country"
+                    placeholder="Select your country"
+                    data={countryOptions}
+                    value={field.value || ""}
+                    onChange={(val: string) => field.onChange(val || null)}
+                  />
+                )}
+              />
 
-                  <View className="mt-6">
-                    <Button
-                      text="Next"
-                      className="text-xl"
-                      rightIcon={<Icon name="arrow-right" />}
-                      onPress={() => setStep(2)}
-                    />
-                  </View>
-                </>
-              )}
+              <Controller
+                control={control}
+                name="countyId"
+                render={({ field }) => (
+                  <Select
+                    label="County"
+                    placeholder={
+                      selectedCountryName
+                        ? "Select your county"
+                        : "First select country"
+                    }
+                    data={countyOptions}
+                    value={field.value || ""}
+                    onChange={(val: string) => field.onChange(val || null)}
+                    disabled={!selectedCountryName}
+                  />
+                )}
+              />
 
-              {/* Step 2: Location – Now using country name */}
-              {step === 2 && (
-                <>
-                  <Text className="text-lg font-medium text-foreground mb-4">
-                    Your Location
-                  </Text>
-
-                  {/* Country Select */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="countryId"
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select Country"
-                        >
-                          <SelectTrigger>
-                            <Text>
-                              {field.value
-                                ? countries.find(
-                                    (c) => c.id.toString() === field.value
-                                  )?.name || "Select Country"
-                                : "Select Country"}
-                            </Text>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {countries.map((c) => (
-                              <SelectItem
-                                key={c.id}
-                                label={c.name}
-                                value={c.id.toString()}
-                              />
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </View>
-
-                  {/* County Select – Using country name */}
-                  <View className="my-2">
-                    <Controller
-                      control={control}
-                      name="countyId"
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            !selectedCountryName
-                              ? "First select country"
-                              : "Select County"
-                          }
-                          disabled={!selectedCountryName}
-                        >
-                          <SelectTrigger>
-                            <Text>
-                              {field.value
-                                ? countiesInSelectedCountry.find(
-                                    (c) => c.id.toString() === field.value
-                                  )?.name || "Select County"
-                                : selectedCountryName
-                                  ? "Select County"
-                                  : "First select country"}
-                            </Text>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {countiesInSelectedCountry.map((county) => (
-                              <SelectItem
-                                key={county.id}
-                                label={county.name}
-                                value={county.id.toString()}
-                              />
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </View>
-
-                  <View className="flex-row justify-between mt-8 gap-3">
-                    <Button
-                      text="Back"
-                      onPress={() => setStep(1)}
-                      variant="outline"
-                      className="flex-1 text-center"
-                    />
-                    <Button
-                      text={loading ? "Saving..." : "Save Changes"}
-                      onPress={handleSubmit(onSubmit)}
-                      disabled={loading || !isDirty}
-                      className="flex-1 text-center"
-                    />
-                  </View>
-                </>
-              )}
-            </CardContent>
-          </Card>
+              <View className="flex-row gap-4 mt-4">
+                <Button
+                  text="Back"
+                  variant="outline"
+                  onPress={() => setStep(1)}
+                  className="flex-1 text-center"
+                />
+                <Button
+                  text={loading ? "Saving..." : "Save Changes"}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={loading || !isDirty}
+                  className="flex-1 text-center"
+                />
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingWrapper>

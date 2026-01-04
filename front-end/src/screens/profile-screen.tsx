@@ -1,10 +1,9 @@
-// app/(protected)/(tabs)/profile.tsx
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { useProfile } from "~/lib/hooks/useProfile";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SheetManager } from "react-native-actions-sheet";
-import { Image } from "expo-image";
+// import { Image } from "expo-image";
 
 export default function ProfileScreen() {
   const { profile, loading, error } = useProfile();
@@ -23,7 +22,7 @@ export default function ProfileScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-background">
         <Text className="text-destructive text-lg">
-          {error?.message  || "Failed to load profile"}
+          {error?.message || "Failed to load profile"}
         </Text>
       </View>
     );
@@ -39,11 +38,12 @@ export default function ProfileScreen() {
       {/* Header - Now using bg-primary */}
       <View className="bg-primary pt-16 pb-10 items-center">
         {profile.profilePictureUrl ? (
-          <Image
-            source={{ uri: profile.profilePictureUrl }}
-            className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
-            resizeMode="cover"
-          />
+          <View className="">
+            <Image
+              source={{ uri: profile.profilePictureUrl }}
+              className="w-32 h-32 rounded-full border-4 border-white shadow-2xl"
+            />
+          </View>
         ) : (
           <View className="w-32 h-32 rounded-full bg-white/20 border-4 border-white/40 justify-center items-center shadow-lg">
             <Text className="text-primary-foreground text-5xl font-bold">

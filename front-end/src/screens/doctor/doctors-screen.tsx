@@ -90,7 +90,7 @@ export default function DoctorsScreen() {
         </Text>
       </View>
 
-      <View className="flex-row items-center border-b border-border">
+      <View className="flex-row items-center">
         <View className="flex-1">
           <SearchBar
             searchQuery={searchQuery}
@@ -104,7 +104,7 @@ export default function DoctorsScreen() {
         <Button
           variant="ghost"
           onPress={() => SheetManager.show("doctor-filters-sheet")}
-          className="relative px-4"
+          className="relative px-4 rounded-full"
           leftIcon={<Ionicons name="filter" size={24} color="#0d9488" />}
         />
 

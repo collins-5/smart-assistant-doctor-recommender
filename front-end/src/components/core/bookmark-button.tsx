@@ -1,15 +1,17 @@
 // src/components/BookmarkDoctorButton.tsx
-import React from "react";
-import { TouchableOpacity, ActivityIndicator } from "react-native";
+
+import React, { useEffect } from "react";
+import { TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { useBookmarkDoctor } from "~/lib/hooks/useBookmarkDoctor";
 import { useUnbookmarkDoctor } from "~/lib/hooks/useUnbookmarkDoctor";
 import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
 import Icon from "../ui/icon";
 import { SheetManager } from "react-native-actions-sheet";
+import { router } from "expo-router";
 
 interface BookmarkDoctorButtonProps {
   doctorId: number | string;
-  doctorName?: string; // Optional: for better confirmation message
+  doctorName?: string;
   size?: number;
 }
 
@@ -18,8 +20,16 @@ export const BookmarkDoctorButton: React.FC<BookmarkDoctorButtonProps> = ({
   doctorName,
   size = 32,
 }) => {
-  const { bookmark, loading: loadingBookmark } = useBookmarkDoctor();
-  const { unbookmark, loading: loadingUnbookmark } = useUnbookmarkDoctor();
+  const {
+    bookmark,
+    loading: loadingBookmark,
+    error: bookmarkError,
+  } = useBookmarkDoctor();
+  const {
+    unbookmark,
+    loading: loadingUnbookmark,
+    error: unbookmarkError,
+  } = useUnbookmarkDoctor();
   const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
 
   const isBookmarked = bookmarkedDoctors.some(
@@ -27,14 +37,47 @@ export const BookmarkDoctorButton: React.FC<BookmarkDoctorButtonProps> = ({
   );
 
   const isLoading = loadingBookmark || loadingUnbookmark;
+  const error = bookmarkError || unbookmarkError;
+
+  // Handle errors with smart messaging
+  useEffect(() => {
+    if (error) {
+      const errorMessage = error.message?.toLowerCase() || "";
+
+      if (
+        errorMessage.includes("profile") ||
+        errorMessage.includes("patient")
+      ) {
+        Alert.alert(
+          "Profile Required",
+          "You need to complete your patient profile before bookmarking doctors.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Complete Profile",
+              onPress: () =>
+                router.push("/(protected)/(profiles)/create-profile"),
+            },
+          ]
+        );
+      } else {
+        // Network or other errors
+        Alert.alert(
+          "Something went wrong",
+          error.message ||
+            "Failed to update bookmark. Please check your connection and try again.",
+          [{ text: "OK" }]
+        );
+      }
+    }
+  }, [error]);
 
   const handlePress = () => {
     if (isBookmarked) {
-      // Show confirmation sheet with doctor name
       SheetManager.show("unbookmark-confirmation", {
         payload: {
           doctorId,
-          doctorName,
+          doctorName: doctorName || "this doctor",
         },
       });
     } else {

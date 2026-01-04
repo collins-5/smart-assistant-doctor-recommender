@@ -36,7 +36,7 @@ export default function TabsLayout() {
             ),
           }}
         />
-         <Tabs.Screen
+        <Tabs.Screen
           name="chat"
           options={{
             tabBarLabel: "SDR-Ai",
@@ -59,6 +59,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="bookmarked"
           options={{
+            href: null,
             title: "Bookmarks",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="bookmark" size={size} color={color} />

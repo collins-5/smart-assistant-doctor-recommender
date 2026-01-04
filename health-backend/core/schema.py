@@ -93,30 +93,45 @@ class DoctorType(DjangoObjectType):
     def resolve_availabilities(self, info):
         now = timezone.now()
         two_weeks_later = now + timedelta(weeks=2)
+
         base_slots = self.availabilities.filter(start_time__gte=now).order_by('start_time')
         result = []
+        seen_slot_keys = set()  # Global deduplication: (date, time)
+
         for base in base_slots:
             if not base.is_recurring:
-                result.append(base)
+                slot_key = (base.start_time.date().isoformat(), base.start_time.time().isoformat())
+                if slot_key not in seen_slot_keys:
+                    result.append(base)
+                    seen_slot_keys.add(slot_key)
                 continue
+
             current = base.start_time
             while current <= two_weeks_later:
                 if base.recurrence_end_date and current.date() > base.recurrence_end_date:
                     break
-                virtual_slot = DoctorAvailability(
-                    id=base.id,
-                    doctor=base.doctor,
-                    start_time=current,
-                    end_time=current + timedelta(minutes=30),
-                    is_recurring=True,
-                )
-                virtual_slot.is_booked = Appointment.objects.filter(
-                    doctor=base.doctor,
-                    start_time__lt=virtual_slot.end_time,
-                    end_time__gt=virtual_slot.start_time,
-                ).exists()
-                result.append(virtual_slot)
+
+                slot_key = (current.date().isoformat(), current.time().isoformat())
+
+                if slot_key not in seen_slot_keys:
+                    virtual_slot = DoctorAvailability(
+                        id=base.id,
+                        doctor=base.doctor,
+                        start_time=current,
+                        end_time=current + timedelta(minutes=30),
+                        is_recurring=True,
+                    )
+                    virtual_slot.is_booked = Appointment.objects.filter(
+                        doctor=base.doctor,
+                        start_time__lt=virtual_slot.end_time,
+                        end_time__gt=virtual_slot.start_time,
+                    ).exists()
+
+                    result.append(virtual_slot)
+                    seen_slot_keys.add(slot_key)
+
                 current += timedelta(days=7)
+
         result.sort(key=lambda s: s.start_time)
         return result
 
@@ -638,32 +653,47 @@ class Query(graphene.ObjectType):
             doctor = Doctor.objects.get(pk=id)
             now = timezone.now()
             two_weeks_later = now + timedelta(weeks=2)
-            base_slots = doctor.availabilities.filter(start_time__gte=now)
+
+            base_slots = doctor.availabilities.filter(start_time__gte=now).order_by('start_time')
             result = []
+            seen_slot_keys = set()
+
             for base in base_slots:
                 if not base.is_recurring:
-                    result.append(base)
+                    slot_key = (base.start_time.date().isoformat(), base.start_time.time().isoformat())
+                    if slot_key not in seen_slot_keys:
+                        result.append(base)
+                        seen_slot_keys.add(slot_key)
                     continue
+
                 current = base.start_time
                 while current <= two_weeks_later:
                     if base.recurrence_end_date and current.date() > base.recurrence_end_date:
                         break
-                    virtual = DoctorAvailability(
-                        id=base.id,
-                        doctor=base.doctor,
-                        start_time=current,
-                        end_time=current + timedelta(minutes=30),
-                        is_recurring=True,
-                    )
-                    virtual.is_booked = Appointment.objects.filter(
-                        doctor=base.doctor,
-                        start_time__lt=virtual.end_time,
-                        end_time__gt=virtual.start_time,
-                    ).exists()
-                    result.append(virtual)
+
+                    slot_key = (current.date().isoformat(), current.time().isoformat())
+
+                    if slot_key not in seen_slot_keys:
+                        virtual = DoctorAvailability(
+                            id=base.id,
+                            doctor=base.doctor,
+                            start_time=current,
+                            end_time=current + timedelta(minutes=30),
+                            is_recurring=True,
+                        )
+                        virtual.is_booked = Appointment.objects.filter(
+                            doctor=base.doctor,
+                            start_time__lt=virtual.end_time,
+                            end_time__gt=virtual.start_time,
+                        ).exists()
+                        result.append(virtual)
+                        seen_slot_keys.add(slot_key)
+
                     current += timedelta(days=7)
+
             result.sort(key=lambda s: s.start_time)
             return result
+
         except Doctor.DoesNotExist:
             return []
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Animated, TouchableOpacity, Image } from "react-native";
 import { useRef } from "react";
 import View from "~/components/ui/view";
@@ -34,7 +34,7 @@ type Specialty = {
 export default function Dashboard() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const { inputText, setInputText, isLoading: aiLoading } = useAIAssistant();
-  const { doctors, loading: loadingDoctors } = useDoctors();
+  const { allDoctors:doctors, loading: loadingDoctors } = useDoctors();
   const { specialties, loading: loadingSpecialties } = useSpecialties();
 
   const handleSend = () => {
@@ -130,68 +130,68 @@ export default function Dashboard() {
 
   return (
     <>
-      <Header />
+      <Header
+        unreadCount={7} // Replace with real data from your notifications hook
+      />
       <KeyboardAvoidingWrapper
         scrollEnabled={false}
         keyboardVerticalOffset={90}
         showsVerticalScrollIndicator={false}
       >
-          {/* Popular Specialties – Horizontal scroll */}
-          <View className="mt-2 px-6">
-            <Text className="text-2xl font-bold text-foreground mb-1">
-              Popular Specialties
-            </Text>
-            <FlashList
-              data={loadingSpecialties ? Array(6).fill({}) : specialties}
-              renderItem={
-                loadingSpecialties
-                  ? () => <SpecialtySkeleton />
-                  : renderSpecialty
-              }
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            />
-          </View>
+        {/* Popular Specialties – Horizontal scroll */}
+        <View className="mt-2 px-6">
+          <Text className="text-2xl font-bold text-foreground mb-1">
+            Popular Specialties
+          </Text>
+          <FlashList
+            data={loadingSpecialties ? Array(6).fill({}) : specialties}
+            renderItem={
+              loadingSpecialties ? () => <SpecialtySkeleton /> : renderSpecialty
+            }
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          />
+        </View>
 
-          {/* Recent Doctors – Horizontal scroll */}
-          <View className="mt-10 px-6">
-            <Text className="text-2xl font-bold text-foreground mb-1">
-              Recent Doctors
-            </Text>
-            <FlashList
-              data={loadingDoctors ? Array(4).fill({}) : doctors.slice(0, 8)}
-              renderItem={
-                loadingDoctors ? () => <DoctorSkeleton /> : renderDoctor
-              }
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            />
-          </View>
+        {/* Recent Doctors – Horizontal scroll */}
+        <View className="mt-10 px-6">
+          <Text className="text-2xl font-bold text-foreground mb-1">
+            Recent Doctors
+          </Text>
+          <FlashList
+            data={loadingDoctors ? Array(4).fill({}) : doctors.slice(0, 8)}
+            renderItem={
+              loadingDoctors ? () => <DoctorSkeleton /> : renderDoctor
+            }
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          />
+        </View>
 
-          {/* Daily Health Tips */}
-          <View className="mt-10 px-6 mb-8">
-            <Text className="text-2xl font-bold text-foreground mb-5">
-              Daily Health Tips
-            </Text>
-            <View className="bg-teal-50/70 rounded-3xl p-6 border border-teal-100">
-              {healthTips.map((tip, index) => (
-                <View
-                  key={index}
-                  className="flex-row items-start py-3 border-b border-teal-200/30 last:border-0"
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={24}
-                    color="#0d9488"
-                    className="mr-4 mt-0.5"
-                  />
-                  <Text className="flex-1 text-foreground text-base leading-6">
-                    {tip}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        {/* Daily Health Tips */}
+        <View className="mt-10 px-6 mb-8">
+          <Text className="text-2xl font-bold text-foreground mb-5">
+            Daily Health Tips
+          </Text>
+          <View className="bg-teal-50/70 rounded-3xl p-6 border border-teal-100">
+            {healthTips.map((tip, index) => (
+              <View
+                key={index}
+                className="flex-row items-start py-3 border-b border-teal-200/30 last:border-0"
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={24}
+                  color="#0d9488"
+                  className="mr-4 mt-0.5"
+                />
+                <Text className="flex-1 text-foreground text-base leading-6">
+                  {tip}
+                </Text>
+              </View>
+            ))}
           </View>
+        </View>
 
         {/* Clean Input Bar */}
         <View className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-white/90 backdrop-blur-lg border-t border-gray-200 safe-area-bottom">

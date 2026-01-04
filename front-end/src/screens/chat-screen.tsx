@@ -20,6 +20,7 @@ import BookAppointmentButton from "~/components/chat/BookAppointmentButton";
 import DoctorsCarousel from "~/components/chat/doctors-carousel";
 import SpecialtiesGrid from "~/components/chat/specialties-grid";
 import { Skeleton } from "~/components/ui/skeleton"; // ← Your skeleton component
+import { Separator } from "~/components/ui/separator";
 
 type Specialty = {
   id: number | string;
@@ -124,7 +125,7 @@ const ChatScreen = () => {
             className={`
               ${hasAnyCard ? "w-full" : "max-w-full"}
               rounded-2xl px-4 py-3
-              ${isBot ? "bg-cyan-100 rounded-bl-none" : "bg-green-100 rounded-br-none"}
+              ${isBot ? "bg-muted rounded-bl-none" : "bg-green-100 rounded-br-none"}
             `}
           >
             {cleanText ? (
@@ -283,7 +284,7 @@ const ChatScreen = () => {
             <TouchableOpacity
               onPress={handleSend}
               disabled={!inputText.trim() || isLoading}
-              className="ml-3 p-3 rounded-full bg-primary mb-1"
+              className="ml-3 p-4 rounded-full bg-primary mb-1 shadow-lg"
             >
               <Ionicons
                 name="send"

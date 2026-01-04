@@ -75,6 +75,8 @@ const DoctorAvailability: React.FC<{
   const availableSlots = availabilities.filter((slot: any) => !slot.isBooked);
   const filteredSlots = filterSlotsByDate(availableSlots);
 
+  console.log(filteredSlots);
+
   if (availableSlots.length === 0) {
     return (
       <View className="flex-1 justify-center items-center py-12">
@@ -200,10 +202,12 @@ const DoctorAvailability: React.FC<{
             data={filteredSlots}
             renderItem={renderSlotItem}
             numColumns={3}
-            keyExtractor={(item) => item.id.toString()}
+            // ← UNIQUE KEY: combine id + startTime
+            keyExtractor={(item) => `${item.id}-${item.startTime}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 1 }}
           />
+         
         </View>
       )}
     </View>

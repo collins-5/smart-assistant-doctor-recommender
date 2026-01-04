@@ -1,28 +1,22 @@
 // src/components/ui/bottom-sheets/doctors-filter-sheet.tsx
+
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { ScrollView, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ActionSheet from "react-native-actions-sheet";
 import { SheetManager } from "react-native-actions-sheet";
+
 import { Button } from "~/components/ui/button";
 import Icon from "~/components/ui/icon";
+import { Input } from "~/components/ui/input";
+import { Text } from "~/components/ui/text";
+
+// Your custom searchable Select
+
 import { useSpecialties } from "~/lib/hooks/useSpecialties";
 import { useCountries } from "~/lib/hooks/useCountries";
 import { useDoctorsFilter } from "~/lib/context/DoctorsFilterContext";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-} from "~/components/ui/select";
-
-const PRICE_RANGES = [
-  { label: "Any Price", range: [0, 10000] },
-  { label: "Under KSh 1,000", range: [0, 1000] },
-  { label: "KSh 1,000 – 2,000", range: [1000, 2000] },
-  { label: "KSh 2,000 – 5,000", range: [2000, 5000] },
-  { label: "Over KSh 5,000", range: [5000, 10000] },
-];
+import { Select } from "./select";
 
 const DoctorsFilterSheet = () => {
   const insets = useSafeAreaInsets();
@@ -30,30 +24,58 @@ const DoctorsFilterSheet = () => {
   const { countries, getCountiesByCountryName } = useCountries();
   const { filters, updateFilters, resetFilters } = useDoctorsFilter();
 
-  const handleApply = () => SheetManager.hide("doctor-filters-sheet");
-  const handleClear = () => resetFilters();
-  const handleClose = () => SheetManager.hide("doctor-filters-sheet");
-
-  const selectedSpecialty = filters.specialtyId
-    ? specialties.find((s) => s.id.toString() === filters.specialtyId)?.name
-    : null;
-
-  const selectedPriceLabel =
-    PRICE_RANGES.find(
-      (p) =>
-        p.range[0] === filters.priceRange[0] &&
-        p.range[1] === filters.priceRange[1]
-    )?.label || null;
-
-  const availabilityLabel = filters.availability
-    ? filters.availability === "online"
-      ? "Online Only"
-      : "In-Clinic"
-    : null;
-
   const countiesInSelectedCountry = filters.countryName
     ? getCountiesByCountryName(filters.countryName)
     : [];
+
+  const countryOptions = [
+    { value: "", label: "All Countries" },
+    ...countries.map((c) => ({ value: c.name, label: c.name })),
+  ];
+
+  const countyOptions = [
+    { value: "", label: "All Counties" },
+    ...countiesInSelectedCountry.map((c) => ({ value: c.name, label: c.name })),
+  ];
+
+  const specialtyOptions = [
+    { value: "", label: "All Specialties" },
+    ...specialties.map((s) => ({ value: s.id.toString(), label: s.name })),
+  ];
+
+  const availabilityOptions = [
+    { value: "", label: "All Modes" },
+    { value: "online", label: "Online Only" },
+    { value: "clinic", label: "In-Clinic Only" },
+  ];
+
+  // Active filter chips
+  type ActiveFilter = { label: string; clear: () => void };
+  const activeFilters: ActiveFilter[] = [
+    filters.specialtyId && {
+      label:
+        specialties.find((s) => s.id.toString() === filters.specialtyId)
+          ?.name || "Unknown",
+      clear: () => updateFilters({ specialtyId: null }),
+    },
+    (filters.priceRange[0] > 0 || filters.priceRange[1] < 10000) && {
+      label: `KSh ${filters.priceRange[0]} – ${filters.priceRange[1]}`,
+      clear: () => updateFilters({ priceRange: [0, 10000] }),
+    },
+    filters.availability && {
+      label:
+        filters.availability === "online" ? "Online Only" : "In-Clinic Only",
+      clear: () => updateFilters({ availability: null }),
+    },
+    filters.countryName && {
+      label: filters.countryName,
+      clear: () => updateFilters({ countryName: null, countyName: null }),
+    },
+    filters.countyName && {
+      label: filters.countyName,
+      clear: () => updateFilters({ countyName: null }),
+    },
+  ].filter(Boolean) as ActiveFilter[];
 
   return (
     <ActionSheet
@@ -65,317 +87,176 @@ const DoctorsFilterSheet = () => {
         paddingHorizontal: 24,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        backgroundColor: "#ffffff",
       }}
       indicatorStyle={{ width: 50, height: 5, backgroundColor: "#e5e7eb" }}
     >
       <ScrollView showsVerticalScrollIndicator={false} className="py-6">
-        {/* Header */}
-        <View className="flex-row justify-between items-center mb-6">
-          <Text className="text-3xl font-bold text-foreground">
-            Filter Doctors
-          </Text>
-          <Button
-            leftIcon={<Icon name="close" size={28} color="#374151" />}
-            variant="ghost"
-            onPress={handleClose}
-            size="icon"
-          />
-        </View>
-
-        {/* Active Filters Chips */}
-        {(selectedSpecialty ||
-          selectedPriceLabel ||
-          availabilityLabel ||
-          filters.countryName ||
-          filters.countyName) && (
-          <View className="mb-8 px-2">
-            <Text className="text-lg font-semibold text-foreground mb-3">
-              Active Filters
+        <View className="gap-y-6">
+          {/* Header */}
+          <View>
+            <Text className="text-2xl font-bold text-primary">
+              Filter Doctors
             </Text>
-            <View className="flex-row flex-wrap gap-3">
-              {selectedSpecialty && (
-                <View className="bg-primary/10 px-4 py-2.5 rounded-full flex-row items-center gap-2">
-                  <Text className="text-primary font-medium">
-                    {selectedSpecialty}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateFilters({ specialtyId: null })}
-                  >
-                    <Icon name="close" size={18} color="#0d9488" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {selectedPriceLabel && selectedPriceLabel !== "Any Price" && (
-                <View className="bg-primary/10 px-4 py-2.5 rounded-full flex-row items-center gap-2">
-                  <Text className="text-primary font-medium">
-                    {selectedPriceLabel}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateFilters({ priceRange: [0, 10000] })}
-                  >
-                    <Icon name="close" size={18} color="#0d9488" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {availabilityLabel && (
-                <View className="bg-primary/10 px-4 py-2.5 rounded-full flex-row items-center gap-2">
-                  <Text className="text-primary font-medium">
-                    {availabilityLabel}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateFilters({ availability: null })}
-                  >
-                    <Icon name="close" size={18} color="#0d9488" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {filters.countryName && (
-                <View className="bg-primary/10 px-4 py-2.5 rounded-full flex-row items-center gap-2">
-                  <Text className="text-primary font-medium">
-                    {filters.countryName}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() =>
-                      updateFilters({ countryName: null, countyName: null })
-                    }
-                  >
-                    <Icon name="close" size={18} color="#0d9488" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {filters.countyName && (
-                <View className="bg-primary/10 px-4 py-2.5 rounded-full flex-row items-center gap-2">
-                  <Text className="text-primary font-medium">
-                    {filters.countyName}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateFilters({ countyName: null })}
-                  >
-                    <Icon name="close" size={18} color="#0d9488" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Location */}
-        <View className="mb-8">
-          <Text className="text-xl font-semibold text-foreground mb-4">
-            Location
-          </Text>
-
-          {/* Country */}
-          <View className="mb-5">
-            <Text className="text-base font-medium text-foreground mb-2">
-              Country
+            <Text className="text-base text-muted-foreground mt-1">
+              Find the right doctor for your needs
             </Text>
-            <Select
-              value={filters.countryName ?? null}
-              onValueChange={(v) =>
-                updateFilters({ countryName: v || null, countyName: null })
-              }
-              placeholder="Select Country"
-            >
-              <SelectTrigger className="">
-                <Text
-                  className={
-                    filters.countryName
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {filters.countryName || "Select Country"}
-                </Text>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem label="All Countries" value="" />
-                {countries.map((c) => (
-                  <SelectItem key={c.id} label={c.name} value={c.name} />
-                ))}
-              </SelectContent>
-            </Select>
           </View>
 
-          {/* County */}
-          {filters.countryName && (
-            <View>
-              <Text className="text-base font-medium text-foreground mb-2">
-                County
-              </Text>
-              <Select
-                value={filters.countyName ?? null}
-                onValueChange={(v) => updateFilters({ countyName: v || null })}
-                placeholder="Select County"
-              >
-                <SelectTrigger className="">
-                  <Text
-                    className={
-                      filters.countyName
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {filters.countyName || "Select County"}
-                  </Text>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem label="All Counties" value="" />
-                  {countiesInSelectedCountry.map((c) => (
-                    <SelectItem key={c.id} label={c.name} value={c.name} />
-                  ))}
-                </SelectContent>
-              </Select>
-            </View>
+          {/* Active Filters */}
+          {activeFilters.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {activeFilters.map((filter, index) => (
+                <Pressable key={index} onPress={filter.clear}>
+                  <View className="flex-row items-center mx-1 gap-x-1 p-2 rounded-xl border border-primary/10 bg-primary/10">
+                    <Text className="text-sm font-semibold text-primary">
+                      {filter.label}
+                    </Text>
+                    <Icon
+                      name="close-circle-outline"
+                      size={16}
+                      className="text-primary"
+                    />
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
           )}
-        </View>
 
-        {/* Specialty */}
-        <View className="mb-8">
-          <Text className="text-xl font-semibold text-foreground mb-4">
-            Specialty
-          </Text>
-          <View className="flex-row flex-wrap gap-3">
-            <TouchableOpacity
-              onPress={() => updateFilters({ specialtyId: null })}
-              className={`px-5 py-3.5 rounded-full border ${
-                !filters.specialtyId
-                  ? "bg-primary border-primary"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <Text
-                className={`font-medium ${!filters.specialtyId ? "text-white" : "text-foreground"}`}
-              >
-                All Specialties
-              </Text>
-            </TouchableOpacity>
-            {specialties.slice(0, 10).map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                onPress={() =>
-                  updateFilters({
-                    specialtyId:
-                      filters.specialtyId === s.id.toString()
-                        ? null
-                        : s.id.toString(),
-                  })
-                }
-                className={`px-5 py-3.5 rounded-full border ${
-                  filters.specialtyId === s.id.toString()
-                    ? "bg-primary border-primary"
-                    : "bg-white border-gray-300"
-                }`}
-              >
-                <Text
-                  className={`font-medium ${
-                    filters.specialtyId === s.id.toString()
-                      ? "text-white"
-                      : "text-foreground"
-                  }`}
-                >
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+          {/* Location */}
+          <View>
+            <Text className="text-xl font-semibold mb-4">Location</Text>
 
-        {/* Price */}
-        <View className="mb-8">
-          <Text className="text-xl font-semibold text-foreground mb-4">
-            Consultation Price
-          </Text>
-          <View className="flex-row flex-wrap gap-3">
-            {PRICE_RANGES.map(({ label, range }) => {
-              const active =
-                filters.priceRange[0] === range[0] &&
-                filters.priceRange[1] === range[1];
-              return (
-                <TouchableOpacity
-                  key={label}
-                  onPress={() =>
-                    updateFilters({ priceRange: range as [number, number] })
+            <Select
+              label="Country"
+              description="Select preferred country"
+              placeholder="All Countries"
+              data={countryOptions}
+              value={filters.countryName || ""}
+              onChange={(val: string) =>
+                updateFilters({
+                  countryName: val || null,
+                  countyName: null,
+                })
+              }
+            />
+
+            {filters.countryName && (
+              <View className="mt-4">
+                <Select
+                  label="County"
+                  description="Select preferred county"
+                  placeholder="All Counties"
+                  data={countyOptions}
+                  value={filters.countyName || ""}
+                  onChange={(val: string) =>
+                    updateFilters({ countyName: val || null })
                   }
-                  className={`px-5 py-3.5 rounded-full border ${
-                    active
-                      ? "bg-primary border-primary"
-                      : "bg-white border-gray-300"
-                  }`}
-                >
-                  <Text
-                    className={`font-medium ${active ? "text-white" : "text-foreground"}`}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                />
+              </View>
+            )}
           </View>
-        </View>
 
-        {/* Availability */}
-        <View className="mb-8">
-          <Text className="text-xl font-semibold text-foreground mb-4">
-            Availability
-          </Text>
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={() => updateFilters({ availability: null })}
-              className={`flex-1 py-4 rounded-xl border ${
-                !filters.availability
-                  ? "bg-primary border-primary"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <Text
-                className={`text-center font-medium ${!filters.availability ? "text-white" : "text-foreground"}`}
-              >
-                All Modes
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => updateFilters({ availability: "online" })}
-              className={`flex-1 py-4 rounded-xl border ${
-                filters.availability === "online"
-                  ? "bg-primary border-primary"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <Text
-                className={`text-center font-medium ${filters.availability === "online" ? "text-white" : "text-foreground"}`}
-              >
-                Online Only
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => updateFilters({ availability: "clinic" })}
-              className={`flex-1 py-4 rounded-xl border ${
-                filters.availability === "clinic"
-                  ? "bg-primary border-primary"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              <Text
-                className={`text-center font-medium ${filters.availability === "clinic" ? "text-white" : "text-foreground"}`}
-              >
-                In-Clinic
-              </Text>
-            </TouchableOpacity>
+          {/* Specialty */}
+          <View>
+            <Text className="text-xl font-semibold mb-4">Specialty</Text>
+            <Select
+              label="Specialty"
+              description="Choose a medical specialty"
+              placeholder="All Specialties"
+              data={specialtyOptions}
+              value={filters.specialtyId || ""}
+              onChange={(val: string) =>
+                updateFilters({ specialtyId: val || null })
+              }
+            />
+          </View>
+
+          {/* Price Range */}
+          <View>
+            <Text className="text-xl font-semibold mb-4">
+              Consultation Price
+            </Text>
+            <Text className="text-sm text-muted-foreground mb-4">
+              Set your preferred price range (KES)
+            </Text>
+
+            <View className="flex-row gap-4">
+              <View className="flex-1">
+                <Text className="mb-1 text-sm font-medium">From (KES)</Text>
+                <Input
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  value={
+                    filters.priceRange[0] > 0
+                      ? filters.priceRange[0].toString()
+                      : ""
+                  }
+                  onChangeText={(text) => {
+                    const val = text ? parseInt(text, 10) || 0 : 0;
+                    updateFilters({ priceRange: [val, filters.priceRange[1]] });
+                  }}
+                  className="bg-background"
+                />
+              </View>
+
+              <View className="items-center justify-center pt-6">
+                <Text className="font-medium text-gray-400">to</Text>
+              </View>
+
+              <View className="flex-1">
+                <Text className="mb-1 text-sm font-medium">To (KES)</Text>
+                <Input
+                  keyboardType="number-pad"
+                  placeholder="10000"
+                  value={
+                    filters.priceRange[1] < 10000
+                      ? filters.priceRange[1].toString()
+                      : ""
+                  }
+                  onChangeText={(text) => {
+                    const val = text ? parseInt(text, 10) || 10000 : 10000;
+                    updateFilters({ priceRange: [filters.priceRange[0], val] });
+                  }}
+                  className="bg-background"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Availability */}
+          <View>
+            <Text className="text-xl font-semibold mb-4">Availability</Text>
+            <Select
+              label="Consultation Mode"
+              description="How would you like to consult?"
+              placeholder="All Modes"
+              data={availabilityOptions}
+              value={filters.availability || ""}
+              onChange={(val: string) =>
+                updateFilters({ availability: (val as "online" | "clinic" | "home") || null })
+              }
+            />
+          </View>
+
+          {/* Action Buttons */}
+          <View className="flex-row gap-4 mt-6">
+            <Button
+              text="Clear All Filters"
+              variant="secondary"
+              onPress={() => {
+                resetFilters();
+                SheetManager.hide("doctor-filters-sheet");
+              }}
+              className="flex-1"
+            />
+            <Button
+              text="Apply Filters"
+              onPress={() => SheetManager.hide("doctor-filters-sheet")}
+              className="flex-1"
+            />
           </View>
         </View>
       </ScrollView>
-
-      {/* Bottom Actions */}
-      <View className="border-t flex-row justify-between border-gray-200 pt-4 px-4 pb-6 gap-3">
-        <Button text="Apply Filters" onPress={handleApply} size="lg"></Button>
-        <Button
-          text="Clear All Filter"
-          variant="outline"
-          onPress={handleClear}
-        ></Button>
-      </View>
     </ActionSheet>
   );
 };

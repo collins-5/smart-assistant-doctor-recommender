@@ -13,18 +13,18 @@ import CancelBookingConfirmationSheet, {
   CancelBookingConfirmationSheetDefinition,
 } from "./cancel-booking-confirmation";
 import DoctorsFilterSheet from "./doctors-filter-sheet";
-import GenericSelectSheet, { GenericSelectSheetDefinition } from "./generic-select-sheet";
 import CancelAppointmentSheet from "./cancel-appointment-sheet";
+import SelectBottomSheet, { SelectBottomSheetDefinition } from "./select/SelectBottomSheet";
 
 const sheets: Record<string, React.ElementType> = {
   "reset-password": ResetPasswordBottomSheet,
   "logout-confirmation": LogoutConfirmationSheet,
   "unbookmark-confirmation": UnbookmarkConfirmationSheet,
   booking: BookingSheet,
-  "cancel-booking-confirmation": CancelBookingConfirmationSheet, // ← Registered
+  "cancel-booking-confirmation": CancelBookingConfirmationSheet,
   "doctor-filters-sheet": DoctorsFilterSheet,
-  "generic-select-sheet": GenericSelectSheet, 
   "cancel-appointment-sheet": CancelAppointmentSheet,
+  "select-bottom-sheet": SelectBottomSheet,
 };
 
 (() => {
@@ -39,7 +39,7 @@ declare module "react-native-actions-sheet" {
     "logout-confirmation": LogoutConfirmationSheetDefinition;
     booking: BookingSheetDefinition;
     "cancel-booking-confirmation": CancelBookingConfirmationSheetDefinition;
-    "generic-select-sheet": GenericSelectSheetDefinition; // ← Added
+    'select-bottom-sheet': SelectBottomSheetDefinition;
   }
 }
 

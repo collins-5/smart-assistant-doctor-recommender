@@ -98,6 +98,7 @@ export const useDoctors = () => {
     }, [allDoctors, searchQuery, filters]);
 
     return {
+        allDoctors,
         doctors,
         loading,
         error,

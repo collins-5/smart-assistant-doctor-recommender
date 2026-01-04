@@ -35,6 +35,11 @@ export const useNotifications = (patientId: number | null): UseNotificationsResu
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const jwt = useSessionStore((s) => s.session?.jwt);
 
+    console.log('🔌 [useNotifications] Hook initialized');
+    console.log('   Patient ID:', patientId);
+    console.log('   JWT available:', !!jwt);
+    console.log('   Subscription skipped:', !patientId || !jwt);
+
     const { data, loading, error } = useSubscription(ON_NEW_NOTIFICATION, {
         variables: {
             patientId,
@@ -42,7 +47,10 @@ export const useNotifications = (patientId: number | null): UseNotificationsResu
         },
         skip: !patientId || !jwt,
         onError: (err) => {
-            console.warn('Notification subscription error:', err);
+            console.error('❌ [useNotifications] Subscription error:', err);
+        },
+        onSubscriptionData: ({ subscriptionData }) => {
+            console.log('📬 [useNotifications] Raw subscription data received:', subscriptionData);
         },
     });
 
@@ -50,16 +58,40 @@ export const useNotifications = (patientId: number | null): UseNotificationsResu
         if (data?.retrieveNewNotifications) {
             const newNotif: Notification = data.retrieveNewNotifications;
 
+            console.log('🔔 [useNotifications] New notification received!');
+            console.log('   ID:', newNotif.id);
+            console.log('   Title:', newNotif.title);
+            console.log('   Description:', newNotif.description);
+            console.log('   Created At:', newNotif.createdAt);
+            console.log('   Is Read:', newNotif.isRead);
+
             setNotifications((prev) => {
-                if (prev.some((n) => n.id === newNotif.id)) {
+                const alreadyExists = prev.some((n) => n.id === newNotif.id);
+                if (alreadyExists) {
+                    console.log('⚠️ [useNotifications] Duplicate notification ignored (ID:', newNotif.id, ')');
                     return prev;
                 }
+
+                console.log('✅ [useNotifications] Adding new notification to list');
                 return [newNotif, ...prev];
             });
         }
     }, [data]);
 
+    // Log loading & error states
+    useEffect(() => {
+        if (loading) {
+            console.log('⏳ [useNotifications] Subscription is connecting...');
+        }
+    }, [loading]);
+
+    if (error) {
+        console.error('🚨 [useNotifications] Subscription error state:', error);
+    }
+
     const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+    console.log(`📊 [useNotifications] Current state → Notifications: ${notifications.length}, Unread: ${unreadCount}`);
 
     return {
         notifications,

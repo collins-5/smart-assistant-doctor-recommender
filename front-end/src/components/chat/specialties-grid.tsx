@@ -1,12 +1,10 @@
 // src/components/ai/SpecialtiesGrid.tsx
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import {  useSpecialties } from "~/lib/hooks/useSpecialties"; // ← Re-enable this
+import { useSpecialties } from "~/lib/hooks/useSpecialties"; // ← Re-enable this
 import { useNavigation } from "@react-navigation/native";
 import { Skeleton } from "~/components/ui/skeleton"; // Optional: for loading state
 import Icon from "../ui/icon";
-
-
 
 const SpecialtiesGrid = () => {
   const { specialties, loading } = useSpecialties();
@@ -37,14 +35,13 @@ const SpecialtiesGrid = () => {
     return null;
   }
 
-  
-  
-
   return (
     <View className="mt-4">
-      <Text className="text-base font-bold text-cyan-900 mb-4 px-1">
-        Available Specialties
-      </Text>
+      <View className="bg-muted rounded-2xl mb-2 border-2 border-primary">
+        <Text className=" py-2 text-xl self-center font-bold text-primary ">
+          Available Specialties
+        </Text>
+      </View>
 
       <View className="flex-row flex-wrap justify-start -mx-2">
         {specialties.slice(0, 12).map((specialty) => (
@@ -60,11 +57,15 @@ const SpecialtiesGrid = () => {
               border border-teal-200
               min-w-32
             "
-          > 
-          <View>
-            <Icon name="doctor"  size={24} className="self-center text-primary"/>
-          </View>
-            
+          >
+            <View>
+              <Icon
+                name="doctor"
+                size={24}
+                className="self-center text-primary"
+              />
+            </View>
+
             <Text className="text-primary text-sm font-semibold text-center">
               {specialty.name}
             </Text>
