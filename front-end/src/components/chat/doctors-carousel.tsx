@@ -100,7 +100,7 @@ const DoctorsCarousel = () => {
   const hasMore = doctors.length > 10;
 
   return (
-    <View className="w-full -mx-4">
+    <View className="w-full">
       <View className="bg-accent ml-4 rounded-2xl mb-2 border-1 border-primary">
         <Text className=" py-2 text-xl self-center font-bold text-primary ">
           Available Doctors

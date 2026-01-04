@@ -208,36 +208,35 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               )}
             </View>
           )}
-
-          <View className="flex-row gap-2 mt-4">
-            {teleconsultPrice != null && (
-              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-                <Text className="text-xs text-primary-foreground">
-                  Video: {teleconsultPrice} /=
-                </Text>
-              </View>
-            )}
-            {clinicVisitPrice != null && (
-              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-                <Text className="text-xs text-primary-foreground">
-                  Clinic: {clinicVisitPrice} /=
-                </Text>
-              </View>
-            )}
-            {homecarePrice != null && (
-              <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-                <Text className="text-xs text-primary-foreground">
-                  Home: {homecarePrice} /=
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* Bookmark */}
         <View className="absolute top-4 right-4">
           <BookmarkDoctorButton doctorId={id} size={26} />
         </View>
+      </View>
+      <View className="flex-row gap-2 px-8 mb-2 ">
+        {teleconsultPrice != null && (
+          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+            <Text className="text-xs text-primary-foreground">
+              Video: {teleconsultPrice} /=
+            </Text>
+          </View>
+        )}
+        {clinicVisitPrice != null && (
+          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+            <Text className="text-xs text-primary-foreground">
+              Clinic: {clinicVisitPrice} /=
+            </Text>
+          </View>
+        )}
+        {homecarePrice != null && (
+          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
+            <Text className="text-xs text-primary-foreground">
+              Home: {homecarePrice} /=
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Optional Action Buttons */}

@@ -201,7 +201,7 @@ const ChatScreen = () => {
 
             {/* Dynamic Components */}
             {hasDoctors && (
-              <View className="mt-4 -mx-4">
+              <View className="mt-4">
                 <DoctorsCarousel />
               </View>
             )}
