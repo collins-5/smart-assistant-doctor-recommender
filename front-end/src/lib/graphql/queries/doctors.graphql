@@ -19,6 +19,10 @@ query GetDoctors {
     homecarePrice
     takesPrepaidPayment
     takesPostpaidPayment
+    insuarance {
+      id
+      name
+    }
     county {
       name
       country {

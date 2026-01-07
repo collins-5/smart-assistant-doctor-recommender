@@ -29,9 +29,9 @@ Here are the available medical specialties you can choose from:
 Here are some doctors that might be able to help:
 [/TOOL]
 
-[TOOL:BOOK_APPOINTMENT]
-Would you like help booking an appointment with a doctor?
-[/TOOL]
+// [TOOL:BOOK_APPOINTMENT]
+// Would you like help booking an appointment with a doctor?
+// [/TOOL]
 
 The app will automatically replace these tool tags with real interactive content (like specialty buttons, doctor cards, or booking options).
 `.trim();

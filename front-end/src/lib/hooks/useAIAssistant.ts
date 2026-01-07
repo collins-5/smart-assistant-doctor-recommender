@@ -109,12 +109,12 @@ export const useAIAssistant = () => {
                         "$1\n\n<SPECIALTIES_LIST/>"
                     );
                 }
-                if (processedText.includes("[TOOL:BOOK_APPOINTMENT]")) {
-                    processedText = processedText.replace(
-                        /\[TOOL:BOOK_APPOINTMENT\](.*?)\[\/TOOL\]/s,
-                        "$1\n\n<BOOK_APPOINTMENT_BUTTON/>"
-                    );
-                }
+                // if (processedText.includes("[TOOL:BOOK_APPOINTMENT]")) {
+                //     processedText = processedText.replace(
+                //         /\[TOOL:BOOK_APPOINTMENT\](.*?)\[\/TOOL\]/s,
+                //         "$1\n\n<BOOK_APPOINTMENT_BUTTON/>"
+                //     );
+                // }
 
                 const aiMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),

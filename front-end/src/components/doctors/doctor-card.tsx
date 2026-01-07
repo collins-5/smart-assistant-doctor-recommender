@@ -8,8 +8,10 @@ import {
 } from "react-native";
 import type { FC } from "react";
 import { BookmarkDoctorButton } from "../core/bookmark-button";
-import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
 import Icon from "../ui/icon";
+import { Button } from "~/components/ui/button"; // ← Your new Button component
+import InsuranceList from "./insuarances";
+import ConsultationPrices from "./consulatation-prices";
 
 interface Specialty {
   id: string | number;
@@ -21,6 +23,11 @@ interface County {
   country: {
     name: string;
   };
+}
+
+interface Insurance {
+  id: string | number;
+  name: string;
 }
 
 interface ActionButton {
@@ -44,49 +51,12 @@ interface DoctorCardProps {
   teleconsultPrice?: number | string | null;
   clinicVisitPrice?: number | string | null;
   homecarePrice?: number | string | null;
-  county?: County | null; // ← Added
-  // Optional buttons
+  county?: County | null;
+  insuarance?: Insurance[] | null;
   primaryAction?: ActionButton;
   secondaryAction?: ActionButton;
-  // Optional: tap entire card
   onPressCard?: () => void;
 }
-
-// Reusable internal button
-const ActionButton: FC<{
-  button: ActionButton;
-  className?: string;
-}> = ({ button, className = "" }) => {
-  const { text, onPress, variant = "default", loading, disabled } = button;
-  const variants = {
-    default: "bg-primary text-primary-foreground",
-    outline: "border-2 border-primary text-primary bg-transparent",
-    destructive: "bg-destructive text-primary-foreground",
-  };
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      className={`px-5 py-3.5 rounded-xl flex-row items-center justify-center gap-2 ${variants[variant]} ${disabled || loading ? "opacity-60" : ""} ${className}`}
-      activeOpacity={0.8}
-    >
-      {loading ? (
-        <ActivityIndicator color="white" size="small" />
-      ) : (
-        <Text
-          className={
-            variant === "outline"
-              ? "text-primary font-medium"
-              : "text-primary-foreground font-medium"
-          }
-        >
-          {text}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
-};
 
 export const DoctorCard: FC<DoctorCardProps> = ({
   id,
@@ -101,11 +71,11 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   clinicVisitPrice,
   homecarePrice,
   county,
+  insuarance,
   primaryAction,
   secondaryAction,
   onPressCard,
 }) => {
-  const { doctors: bookmarkedDoctors = [] } = useBookmarkedDoctors();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -119,6 +89,12 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   const locationText = county ? `${county.name}, ${county.country.name}` : null;
 
   const CardWrapper = onPressCard ? TouchableOpacity : View;
+
+  const insurances = Array.isArray(insuarance)
+    ? insuarance
+    : insuarance
+      ? [insuarance]
+      : [];
 
   return (
     <CardWrapper
@@ -153,13 +129,13 @@ export const DoctorCard: FC<DoctorCardProps> = ({
               "Dr. Unknown"}
           </Text>
 
-          <Text className="text-muted-foreground mt-1">
+          <Text className="text-muted-foreground">
             {primarySpecialty?.name || "General Practitioner"}
           </Text>
 
           {/* Location: County, Country */}
           {locationText && (
-            <Text className="text-muted-foreground text-sm mt-1">
+            <Text className="text-muted-foreground text-sm">
               <Icon
                 name="map-marker-radius-outline"
                 className="text-destructive ml-r"
@@ -170,8 +146,8 @@ export const DoctorCard: FC<DoctorCardProps> = ({
           )}
 
           {subSpecialties && subSpecialties.length > 0 && (
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {subSpecialties.slice(0, 3).map((sub) => (
+            <View className="mt-1 flex-row flex-wrap gap-2">
+              {subSpecialties.slice(0, 1).map((sub) => (
                 <View
                   key={sub.id}
                   className="bg-primary/10 px-3 py-1 rounded-full"
@@ -181,9 +157,9 @@ export const DoctorCard: FC<DoctorCardProps> = ({
                   </Text>
                 </View>
               ))}
-              {subSpecialties.length > 3 && (
+              {subSpecialties.length > 1 && (
                 <Text className="text-muted-foreground text-xs">
-                  +{subSpecialties.length - 3} more
+                  +{subSpecialties.length - 1} more
                 </Text>
               )}
             </View>
@@ -215,42 +191,47 @@ export const DoctorCard: FC<DoctorCardProps> = ({
           <BookmarkDoctorButton doctorId={id} size={26} />
         </View>
       </View>
-      <View className="flex-row gap-2 px-8 mb-2 ">
-        {teleconsultPrice != null && (
-          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-            <Text className="text-xs text-primary-foreground">
-              Video: {teleconsultPrice} /=
-            </Text>
-          </View>
-        )}
-        {clinicVisitPrice != null && (
-          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-            <Text className="text-xs text-primary-foreground">
-              Clinic: {clinicVisitPrice} /=
-            </Text>
-          </View>
-        )}
-        {homecarePrice != null && (
-          <View className="bg-primary p-1 rounded-2xl justify-center items-center h-8">
-            <Text className="text-xs text-primary-foreground">
-              Home: {homecarePrice} /=
-            </Text>
-          </View>
-        )}
-      </View>
 
-      {/* Optional Action Buttons */}
+      <InsuranceList insurances={insurances} />
+
+      <ConsultationPrices
+        teleconsultPrice={teleconsultPrice}
+        clinicVisitPrice={clinicVisitPrice}
+        homecarePrice={homecarePrice}
+      />
+
+      {/* Optional Action Buttons — Now using your new Button component */}
       {(primaryAction || secondaryAction) && (
         <View className="px-5 pb-5 border-t border-gray-200 pt-4">
           {secondaryAction ? (
             <View className="flex-row gap-3">
               {primaryAction && (
-                <ActionButton button={primaryAction} className="flex-1" />
+                <Button
+                  text={primaryAction.text}
+                  onPress={primaryAction.onPress}
+                  variant={primaryAction.variant}
+                  loading={primaryAction.loading}
+                  disabled={primaryAction.disabled}
+                  className="flex-1 text-center"
+                />
               )}
-              <ActionButton button={secondaryAction} className="flex-1" />
+              <Button
+                text={secondaryAction.text}
+                onPress={secondaryAction.onPress}
+                variant={secondaryAction.variant}
+                loading={secondaryAction.loading}
+                disabled={secondaryAction.disabled}
+                className="flex-1 text-center"
+              />
             </View>
           ) : primaryAction ? (
-            <ActionButton button={primaryAction} />
+            <Button
+              text={primaryAction.text}
+              onPress={primaryAction.onPress}
+              variant={primaryAction.variant}
+              loading={primaryAction.loading}
+              disabled={primaryAction.disabled}
+            />
           ) : null}
         </View>
       )}

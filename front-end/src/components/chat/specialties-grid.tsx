@@ -1,28 +1,31 @@
 // src/components/ai/SpecialtiesGrid.tsx
+
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { useSpecialties } from "~/lib/hooks/useSpecialties"; // ← Re-enable this
-import { useNavigation } from "@react-navigation/native";
-import { Skeleton } from "~/components/ui/skeleton"; // Optional: for loading state
-import Icon from "../ui/icon";
+import { useSpecialties } from "~/lib/hooks/useSpecialties";
+import { Skeleton } from "~/components/ui/skeleton";
+import { router } from "expo-router";
+import SpecialtyCard from "~/screens/specialty-card";
 
 const SpecialtiesGrid = () => {
   const { specialties, loading } = useSpecialties();
-  const navigation = useNavigation<any>();
 
   // Loading state
   if (loading) {
     return (
-      <View className="mt-4">
-        <Text className="text-sm font-semibold text-cyan-900 mb-3 px-1">
-          Available Specialties
-        </Text>
-        <View className="flex-row flex-wrap justify-start -mx-1">
+      <View className="mt-6 px-4">
+        <View className="bg-muted rounded-2xl py-4 mb-5 border-2 border-primary">
+          <Text className="text-xl font-bold text-primary text-center">
+            Available Specialties
+          </Text>
+        </View>
+
+        <View className="flex-row flex-wrap justify-between">
           {Array(8)
             .fill(null)
             .map((_, i) => (
-              <View key={i} className="m-1">
-                <Skeleton className="h-10 w-28 rounded-full" />
+              <View key={i} className="mb-4 px-2">
+                <Skeleton className="w-32 h-32 rounded-3xl" />
               </View>
             ))}
         </View>
@@ -35,47 +38,38 @@ const SpecialtiesGrid = () => {
     return null;
   }
 
+  const handleSpecialtyPress = (specialtyId: number | string) => {
+    // Navigate to doctors screen and filter by specialty
+    router.push({
+      pathname: "/(tabs)/doctors/doctors",
+      params: { specialtyId: specialtyId.toString() },
+    });
+  };
+
   return (
-    <View className="mt-4">
-      <View className="bg-muted rounded-2xl mb-2 border-2 border-primary">
-        <Text className=" py-2 text-xl self-center font-bold text-primary ">
+    <View className="mt-6 px-4">
+      <View className="bg-muted rounded-2xl py-4 mb-5 border-2 border-primary">
+        <Text className="text-xl font-bold text-primary text-center">
           Available Specialties
         </Text>
       </View>
 
-      <View className="flex-row flex-wrap justify-start -mx-2">
+      <View className="flex-row flex-wrap justify-between">
         {specialties.slice(0, 12).map((specialty) => (
           <TouchableOpacity
             key={specialty.id}
-            activeOpacity={0.7}
-            onPress={() =>
-              navigation.navigate("DoctorsList", { specialtyId: specialty.id })
-            }
-            className="
-              m-2 px-5 py-3.5  h-20
-              rounded-2xl 
-              border border-teal-200
-              min-w-32
-            "
+            activeOpacity={0.85}
+            onPress={() => handleSpecialtyPress(specialty.id)}
+            className="mb-5 px-2"
           >
-            <View>
-              <Icon
-                name="doctor"
-                size={24}
-                className="self-center text-primary"
-              />
-            </View>
-
-            <Text className="text-primary text-sm font-semibold text-center">
-              {specialty.name}
-            </Text>
+            <SpecialtyCard specialty={specialty} />
           </TouchableOpacity>
         ))}
       </View>
 
       {specialties.length > 12 && (
-        <Text className="text-center text-cyan-700 text-sm mt-4 font-medium">
-          and {specialties.length - 3} more...
+        <Text className="text-center text-primary text-base mt-3 font-semibold">
+          and {specialties.length - 12} more specialties available...
         </Text>
       )}
     </View>

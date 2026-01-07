@@ -583,7 +583,7 @@ export type GetBookmarkedDoctorsQuery = { __typename?: 'Query', bookmarkedDoctor
 export type GetDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null } | null> | null };
+export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null } | null> | null };
 
 export type GetDoctorQueryVariables = Exact<{
   id: Scalars['Int']['input'];
@@ -1240,6 +1240,10 @@ export const GetDoctorsDocument = gql`
     homecarePrice
     takesPrepaidPayment
     takesPostpaidPayment
+    insuarance {
+      id
+      name
+    }
     county {
       name
       country {
