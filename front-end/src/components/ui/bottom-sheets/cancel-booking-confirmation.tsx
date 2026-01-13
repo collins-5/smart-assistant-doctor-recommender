@@ -6,6 +6,7 @@ import ActionSheet from "react-native-actions-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import { SheetManager } from "react-native-actions-sheet";
 import { Button } from "~/components/ui/button";
+import { router } from "expo-router";
 
 const CancelBookingConfirmationSheet = () => {
   const insets = useSafeAreaInsets();
@@ -13,6 +14,7 @@ const CancelBookingConfirmationSheet = () => {
   const handleConfirm = () => {
     SheetManager.hide("cancel-booking-confirmation");
     SheetManager.hide("booking"); // Closes the main booking sheet
+    router.replace("/(protected)/(tabs)/doctors/doctors");
   };
 
   const handleCancel = () => {
