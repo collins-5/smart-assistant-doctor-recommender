@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -116,20 +117,36 @@ export default function DoctorProfileScreen() {
           )}
 
           {/* Accepted Insurances – now works despite backend typo */}
+          {/* Accepted Insurances – Grid Layout with Logos */}
           {doctor.insurances && doctor.insurances.length > 0 && (
             <View className="bg-white rounded-2xl p-5 my-1 shadow-sm border border-gray-100">
-              <Text className="text-lg italic font-bold text-gray-900 mb-3">
-                Insurances
+              <Text className="text-lg italic font-bold text-gray-900 mb-5">
+                Accepted Insurances
               </Text>
-              <View className="flex-row flex-wrap gap-2">
+
+              {/* Responsive Grid: 3 items per row */}
+              <View className="flex-row flex-wrap -mx-2">
                 {doctor.insurances.map((ins: any) => (
-                  <View
-                    key={ins.id}
-                    className="bg-blue-200 px px-4 py-2 rounded-full"
-                  >
-                    <Text className="text-primary font-medium text-sm">
-                      {ins.name}
-                    </Text>
+                  <View key={ins.id} className="w-1/3 px-2 mb-4">
+                    <View className="bg-gray-50 h-24 rounded-xl border border-gray-200 shadow-sm flex items-center justify-center p-3">
+                      {ins.logoUrl ? (
+                        <Image
+                          source={{ uri: ins.logoUrl }}
+                          className="w-20 h-12"
+                          resizeMode="contain"
+                          onError={() =>
+                            console.log(
+                              "Insurance logo failed to load:",
+                              ins.name
+                            )
+                          }
+                        />
+                      ) : (
+                        <Text className="text-xs font-medium text-gray-600 text-center leading-tight px-2">
+                          {ins.name}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 ))}
               </View>

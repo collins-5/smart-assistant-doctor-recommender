@@ -31,6 +31,7 @@ query GetDoctor($id: Int!) {
     insuarance {
       id
       name
+      logoUrl
     }
     user {
       phoneNumber

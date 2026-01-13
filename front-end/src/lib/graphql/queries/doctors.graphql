@@ -22,6 +22,7 @@ query GetDoctors {
     insuarance {
       id
       name
+      logoUrl
     }
     county {
       name

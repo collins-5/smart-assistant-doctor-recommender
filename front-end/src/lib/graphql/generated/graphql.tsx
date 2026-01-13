@@ -231,6 +231,9 @@ export type InsuaranceType = {
   __typename?: 'InsuaranceType';
   id: Scalars['ID']['output'];
   insuarance: Array<BookmarkedDoctorType>;
+  logo?: Maybe<Scalars['String']['output']>;
+  /** Full URL to the insurance logo */
+  logoUrl?: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
 };
 
@@ -250,6 +253,7 @@ export type Mutation = {
   /** Obtain JSON Web Token mutation */
   tokenAuth?: Maybe<ObtainJsonWebToken>;
   unbookmarkDoctor?: Maybe<UnbookmarkDoctor>;
+  uploadInsuranceLogo?: Maybe<UploadInsuranceLogo>;
   uploadProfilePicture?: Maybe<UploadProfilePicture>;
   verifyToken?: Maybe<Verify>;
 };
@@ -319,6 +323,12 @@ export type MutationTokenAuthArgs = {
 
 export type MutationUnbookmarkDoctorArgs = {
   doctorId: Scalars['Int']['input'];
+};
+
+
+export type MutationUploadInsuranceLogoArgs = {
+  file: Scalars['Upload']['input'];
+  insuranceId: Scalars['Int']['input'];
 };
 
 
@@ -463,6 +473,13 @@ export type UnbookmarkDoctor = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type UploadInsuranceLogo = {
+  __typename?: 'UploadInsuranceLogo';
+  error?: Maybe<Scalars['String']['output']>;
+  insurance?: Maybe<InsuaranceType>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type UploadProfilePicture = {
   __typename?: 'UploadProfilePicture';
   error?: Maybe<Scalars['String']['output']>;
@@ -583,14 +600,14 @@ export type GetBookmarkedDoctorsQuery = { __typename?: 'Query', bookmarkedDoctor
 export type GetDoctorsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null } | null> | null };
+export type GetDoctorsQuery = { __typename?: 'Query', doctors?: Array<{ __typename?: 'DoctorType', id: string, title: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string, logoUrl?: string | null }>, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null } | null> | null };
 
 export type GetDoctorQueryVariables = Exact<{
   id: Scalars['Int']['input'];
 }>;
 
 
-export type GetDoctorQuery = { __typename?: 'Query', doctor?: { __typename?: 'DoctorType', id: string, title: string, bio: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string }>, user: { __typename?: 'UserType', phoneNumber?: string | null, email?: string | null }, availabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null } | null };
+export type GetDoctorQuery = { __typename?: 'Query', doctor?: { __typename?: 'DoctorType', id: string, title: string, bio: string, firstName: string, lastName: string, fullName: string, profilePictureUrl?: string | null, takesPrepaidPayment: boolean, takesPostpaidPayment: boolean, teleconsultPrice: any, clinicVisitPrice: any, homecarePrice: any, county?: { __typename?: 'CountyType', name: string, country: { __typename?: 'CountryType', name: string } } | null, primarySpecialty?: { __typename?: 'SpecialtyType', id: string, name: string } | null, subSpecialties: Array<{ __typename?: 'SpecialtyType', id: string, name: string }>, insuarance: Array<{ __typename?: 'InsuaranceType', id: string, name: string, logoUrl?: string | null }>, user: { __typename?: 'UserType', phoneNumber?: string | null, email?: string | null }, availabilities?: Array<{ __typename?: 'DoctorAvailabilityType', id: string, startTime: any, endTime: any, isRecurring: boolean, isBooked?: boolean | null } | null> | null } | null };
 
 export type GetDoctorAvailabilitiesQueryVariables = Exact<{
   doctorId: Scalars['Int']['input'];
@@ -1243,6 +1260,7 @@ export const GetDoctorsDocument = gql`
     insuarance {
       id
       name
+      logoUrl
     }
     county {
       name
@@ -1317,6 +1335,7 @@ export const GetDoctorDocument = gql`
     insuarance {
       id
       name
+      logoUrl
     }
     user {
       phoneNumber
