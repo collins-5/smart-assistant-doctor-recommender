@@ -1,32 +1,19 @@
 // src/screens/Chat.tsx
-import React, { useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import Markdown from "react-native-markdown-display";
-import { format } from "date-fns";
+
+import { useRef, useState, useCallback, useEffect } from "react";
+import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 
-import { useAIAssistant, ChatMessage } from "~/lib/hooks/useAIAssistant";
+// Only these are added for date headers
+import { format, isToday, isYesterday, startOfDay } from "date-fns";
+
+import { useAIAssistant } from "~/lib/hooks/useAIAssistant";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 import ChatHeader from "~/components/chat/chat-header";
-import BookAppointmentButton from "~/components/chat/BookAppointmentButton";
-import DoctorsCarousel from "~/components/chat/doctors-carousel";
-import SpecialtiesGrid from "~/components/chat/specialties-grid";
-import { Skeleton } from "~/components/ui/skeleton"; // ← Your skeleton component
-import { Separator } from "~/components/ui/separator";
 import ChatInput from "~/components/chat/chat-input";
-
-type Specialty = {
-  id: number | string;
-  name: string;
-};
+import MessageBubble from "~/components/chat/message";
+import MessageSkeleton from "~/components/chat/message-skeleton";
+import ScrollToBottomButton from "~/components/chat/scroll-button";
 
 const ChatScreen = () => {
   const {
@@ -35,10 +22,11 @@ const ChatScreen = () => {
     setInputText,
     isLoading,
     sendMessage,
-    loadingHistory, // ← This tells us when backend history is loading
+    loadingHistory,
   } = useAIAssistant();
 
   const flashListRef = useRef<any>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -46,187 +34,40 @@ const ChatScreen = () => {
     }
   };
 
-  // In Chat.tsx — replace your skeletonMessages with this:
-  const skeletonMessages: ChatMessage[] = [
-    {
-      id: "s1",
-      text: "", // empty text is fine
-      isBot: true,
-      createdAt: new Date(),
-    },
-    {
-      id: "s2",
-      text: "",
-      isBot: false,
-      createdAt: new Date(),
-    },
-    {
-      id: "s3",
-      text: "",
-      isBot: true,
-      createdAt: new Date(),
-    },
-    {
-      id: "s4",
-      text: "",
-      isBot: true,
-      createdAt: new Date(),
-    },
+  const scrollToBottom = useCallback((animated = true) => {
+    flashListRef.current?.scrollToEnd({ animated });
+  }, []);
+
+  const handleScroll = useCallback((event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const paddingToBottom = 150;
+    const isCloseToBottom =
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - paddingToBottom;
+
+    setIsNearBottom(isCloseToBottom);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      if (isNearBottom || messages.length === 1) {
+        setTimeout(() => scrollToBottom(), 100);
+      }
+    }
+  }, [messages.length, isNearBottom, scrollToBottom]);
+
+  useEffect(() => {
+    if (!loadingHistory && messages.length > 0) {
+      setTimeout(() => scrollToBottom(false), 300);
+    }
+  }, [loadingHistory, scrollToBottom]);
+
+  const skeletonData = [
+    { id: "s1", isBot: true },
+    { id: "s2", isBot: false },
+    { id: "s3", isBot: true },
+    { id: "s4", isBot: true },
   ];
-
-  const renderSkeletonItem = ({ item }: { item: ChatMessage }) => {
-    const isBot = item.isBot;
-
-    return (
-      <View className={`my-3 ${isBot ? "items-start" : "items-end"}`}>
-        <View className="mx-4 max-w-[85%]">
-          <View
-            className={`
-            rounded-2xl px-4 py-3
-            ${isBot ? "bg-cyan-100 rounded-bl-none" : "bg-green-100 rounded-br-none"}
-          `}
-          >
-            <View className="space-y-2">
-              <Skeleton className="h-4 w-48 rounded-full" />
-              <Skeleton className="h-4 w-64 rounded-full" />
-              <Skeleton className="h-4 w-32 rounded-full" />
-            </View>
-            <View className="mt-3 flex-row justify-end">
-              <Skeleton className="h-3 w-12 rounded-full" />
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isBot = item.isBot;
-
-    const hasDoctors = item.text.includes("<DOCTORS_LIST/>");
-    const hasSpecialties = item.text.includes("<SPECIALTIES_LIST/>");
-    const hasBookButton = item.text.includes("<BOOK_APPOINTMENT_BUTTON/>");
-    const hasAnyCard = hasDoctors || hasSpecialties || hasBookButton;
-
-    const cleanText = item.text
-      .replace(/<DOCTORS_LIST\/>/g, "")
-      .replace(/<SPECIALTIES_LIST\/>/g, "")
-      .replace(/<BOOK_APPOINTMENT_BUTTON\/>/g, "")
-      .trim();
-
-    return (
-      <View className={`my-2 ${isBot ? "items-start" : "items-end"}`}>
-        <View
-          className={`
-            ${hasAnyCard ? "w-full px-4" : "max-w-[85%] mx-4"}
-            ${isBot ? "" : "items-end"}
-          `}
-        >
-          <View
-            className={`
-              ${hasAnyCard ? "w-full" : "max-w-full"}
-              rounded-2xl px-4 py-3
-              ${isBot ? "bg-muted rounded-bl-none" : "bg-green-100 rounded-br-none"}
-            `}
-          >
-            {cleanText ? (
-              <Markdown
-                style={{
-                  body: {
-                    fontSize: 15,
-                    lineHeight: 22,
-                    color: isBot ? "#164e63" : "#166534",
-                  },
-                  paragraph: { marginTop: 0, marginBottom: 8 },
-                  strong: { fontWeight: "700" },
-                  em: { fontStyle: "italic" },
-                  heading1: {
-                    fontSize: 22,
-                    fontWeight: "700",
-                    marginVertical: 8,
-                  },
-                  heading2: {
-                    fontSize: 20,
-                    fontWeight: "600",
-                    marginVertical: 6,
-                  },
-                  heading3: {
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginVertical: 6,
-                  },
-                  heading4: {
-                    fontSize: 16,
-                    fontWeight: "600",
-                    marginVertical: 4,
-                  },
-                  bullet_list: { marginVertical: 4 },
-                  ordered_list: { marginVertical: 4 },
-                  list_item: { flexDirection: "row", marginBottom: 4 },
-                  bullet_list_icon: { marginRight: 8, marginTop: 2 },
-                  ordered_list_icon: { marginRight: 8, marginTop: 2 },
-                  code_inline: {
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    borderRadius: 4,
-                    fontSize: 14,
-                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                    backgroundColor: "#f3f4f6",
-                  },
-                  code_block: {
-                    padding: 12,
-                    borderRadius: 8,
-                    marginVertical: 8,
-                    fontSize: 13,
-                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                    backgroundColor: "#f3f4f6",
-                  },
-                  blockquote: {
-                    borderLeftWidth: 4,
-                    paddingLeft: 12,
-                    paddingVertical: 8,
-                    marginVertical: 8,
-                    borderLeftColor: "#e5e7eb",
-                    backgroundColor: "#f9fafb",
-                  },
-                  hr: {
-                    height: 1,
-                    marginVertical: 16,
-                    backgroundColor: "#e5e7eb",
-                  },
-                }}
-              >
-                {cleanText}
-              </Markdown>
-            ) : null}
-
-            {/* Dynamic Components */}
-            {hasDoctors && (
-              <View className="mt-4">
-                <DoctorsCarousel />
-              </View>
-            )}
-
-            {hasSpecialties && (
-              <View className="mt-4 -mx-4">
-                <SpecialtiesGrid />
-              </View>
-            )}
-
-            {hasBookButton && (
-              <View className="mt-4">
-                <BookAppointmentButton />
-              </View>
-            )}
-
-            <Text className="text-xs text-gray-500 mt-3 text-right">
-              {format(item.createdAt, "HH:mm")}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <>
@@ -237,32 +78,69 @@ const ChatScreen = () => {
         keyboardVerticalOffset={90}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 bg-background">
-          {/* Chat Messages or Skeleton */}
-          <View style={{ flex: 1, width: "100%" }}>
-            <FlashList
-              ref={flashListRef}
-              data={loadingHistory ? skeletonMessages : messages}
-              renderItem={loadingHistory ? renderSkeletonItem : renderMessage}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingVertical: 16, paddingBottom: 20 }}
-              onContentSizeChange={() =>
-                flashListRef.current?.scrollToEnd({ animated: true })
+        <View className="flex-1 bg-background relative">
+          <FlashList
+            ref={flashListRef}
+            data={loadingHistory ? skeletonData : messages}
+            renderItem={({ item, index }) => {
+              if (loadingHistory) {
+                return <MessageSkeleton isBot={item.isBot} />;
               }
-              onLayout={() =>
-                flashListRef.current?.scrollToEnd({ animated: false })
-              }
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
 
-          {/* Typing Indicator */}
+              const currentMessage = item;
+              const previousMessage = messages[index - 1];
+
+              const currentDate = new Date(currentMessage.createdAt);
+              const previousDate = previousMessage
+                ? new Date(previousMessage.createdAt)
+                : null;
+
+              const isNewDay =
+                !previousDate ||
+                startOfDay(currentDate).getTime() !==
+                  startOfDay(previousDate).getTime();
+
+              const headerText = isToday(currentDate)
+                ? "Today"
+                : isYesterday(currentDate)
+                  ? "Yesterday"
+                  : format(currentDate, "MMMM d, yyyy");
+
+              return (
+                <>
+                  {isNewDay && (
+                    <View style={styles.dateHeader}>
+                      <Text style={styles.dateHeaderText}>{headerText}</Text>
+                    </View>
+                  )}
+                  <MessageBubble
+                    text={currentMessage.text}
+                    isBot={currentMessage.isBot}
+                    createdAt={currentMessage.createdAt}
+                  />
+                </>
+              );
+            }}
+            keyExtractor={(item: any) => item.id}
+            contentContainerStyle={{ paddingVertical: 16, paddingBottom: 20 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={100}
+            keyboardShouldPersistTaps="handled"
+          />
+
+          {!isNearBottom && messages.length > 0 && (
+            <ScrollToBottomButton
+              onPress={() => scrollToBottom(true)}
+              visible={!isNearBottom && messages.length > 0}
+            />
+          )}
+
           {isLoading && (
             <View className="px-4 pb-3 self-start">
               <View className="bg-gray-200 rounded-2xl rounded-bl-none px-4 py-3 max-w-[70%] flex-row items-center">
                 <ActivityIndicator size="small" color="#666" />
                 <Text className="text-gray-600 ml-3">
-                  {/* Health Assistant is thinking... */}
+                  Health Assistant is thinking...
                 </Text>
               </View>
             </View>
@@ -279,5 +157,22 @@ const ChatScreen = () => {
     </>
   );
 };
+
+// Only these styles were added for the date header
+const styles = StyleSheet.create({
+  dateHeader: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  dateHeaderText: {
+    backgroundColor: "#e5e5ea",
+    color: "#000",
+    fontSize: 13,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+});
 
 export default ChatScreen;

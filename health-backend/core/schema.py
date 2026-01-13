@@ -149,11 +149,17 @@ class SpecialtyType(DjangoObjectType):
     class Meta:
         model = Specialty
         fields = "__all__"
-
 class InsuaranceType(DjangoObjectType):
+    logo_url = graphene.String(description="Full URL to the insurance logo")
+
     class Meta:
         model = Insuarance
         fields = "__all__"
+
+    def resolve_logo_url(self, info):
+        if self.logo:
+            return info.context.build_absolute_uri(self.logo.url)
+        return None
 
 class NotificationType(graphene.ObjectType):
     id = graphene.Int(required=True)
@@ -503,6 +509,36 @@ class RemoveProfilePicture(graphene.Mutation):
             patient.save()
         return RemoveProfilePicture(success=True, error=None, patient=patient)
 
+# Add this inside your Mutation class or as a separate mutation
+
+class UploadInsuranceLogo(graphene.Mutation):
+    class Arguments:
+        insurance_id = graphene.Int(required=True)
+        file = Upload(required=True)
+
+    success = graphene.Boolean()
+    error = graphene.String()
+    insurance = graphene.Field(InsuaranceType)
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, insurance_id, file):
+        user = info.context.user
+        if not user.is_staff:
+            return UploadInsuranceLogo(success=False, error="Only staff can upload insurance logos")
+
+        try:
+            insurance = Insuarance.objects.get(id=insurance_id)
+        except Insuarance.DoesNotExist:
+            return UploadInsuranceLogo(success=False, error="Insurance not found")
+
+        if not file:
+            return UploadInsuranceLogo(success=False, error="No file provided")
+
+        insurance.logo = file
+        insurance.save()
+        return UploadInsuranceLogo(success=True, error=None, insurance=insurance)
+
 class CreateDoctorAvailabilityBlock(graphene.Mutation):
     class Arguments:
         input = CreateDoctorAvailabilityBlockInput(required=True)
@@ -786,5 +822,6 @@ class Mutation(graphene.ObjectType):
     create_doctor_availability_block = CreateDoctorAvailabilityBlock.Field()
     send_ai_chat_message = SendAIChatMessage.Field()
     cancel_appointment = CancelAppointment.Field()
+    upload_insurance_logo = UploadInsuranceLogo.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

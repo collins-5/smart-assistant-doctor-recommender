@@ -74,9 +74,21 @@ class Specialty(models.Model):
 
 class Insuarance(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    logo = models.ImageField(upload_to='insurance_logos/', null=True, blank=True)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # Delete old logo when updating with a new one
+        try:
+            old = Insuarance.objects.get(pk=self.pk)
+            if old.logo and old.logo != self.logo:
+                if default_storage.exists(old.logo.path):
+                    default_storage.delete(old.logo.path)
+        except Insuarance.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor')

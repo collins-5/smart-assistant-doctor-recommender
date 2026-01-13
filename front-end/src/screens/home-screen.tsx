@@ -42,7 +42,7 @@ export default function Dashboard() {
             renderItem={
               loadingSpecialties
                 ? () => <SpecialtySkeleton />
-                : ({ item }) => <SpecialtyCard specialty={item} />
+                : ({ item }) => <View className="mr-3"><SpecialtyCard specialty={item} /></View>
             }
             horizontal
             showsHorizontalScrollIndicator={false}

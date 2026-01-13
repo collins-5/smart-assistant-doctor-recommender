@@ -16,7 +16,7 @@ const SpecialtyCard: React.FC<{ specialty: Specialty }> = ({ specialty }) => {
 
   return (
     <View
-      className="mr-3 w-32 bg-white rounded-3xl shadow-lg overflow-hidden"
+      className="w-32 bg-white rounded-3xl shadow-lg overflow-hidden"
       style={{ elevation: 6 }}
     >
       <View className="pb-4 items-center justify-center">

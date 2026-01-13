@@ -109,7 +109,7 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
       }}
       indicatorStyle={{ width: 50, height: 5, backgroundColor: "#d1d5db" }}
     >
-      <ScrollView showsVerticalScrollIndicator={false} className="py-8">
+      <ScrollView showsVerticalScrollIndicator={false} className="py-2">
         {/* Header with Close Button */}
         <View className="flex-row justify-between mx-6 items-center">
           <Text className="text-3xl font-bold text-foreground">
@@ -175,7 +175,7 @@ const BookingSheet: React.FC<BookingSheetProps> = ({ payload }) => {
               profilePictureUrl={selectedDoctor.profilePictureUrl}
               primarySpecialty={selectedDoctor.primarySpecialty}
               subSpecialties={selectedDoctor.subSpecialties}
-              onPressCard={handleCloseAttempt} // Optional: treat tap as cancel attempt
+              insuarance={selectedDoctor.insuarance || []}
               county={selectedDoctor.county}
               primaryAction={{
                 text: "Change Doctor",
