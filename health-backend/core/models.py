@@ -1,8 +1,8 @@
-# models.py
+# core/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.files.storage import default_storage
-from datetime import timedelta
+from datetime import timedelta, time
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -15,6 +15,7 @@ class User(AbstractUser):
     def __str__(self):
         return self.email or self.phone_number or str(self.id)
 
+
 class Country(models.Model):
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=10, blank=True)
@@ -26,6 +27,7 @@ class Country(models.Model):
     def __str__(self):
         return self.name
 
+
 class County(models.Model):
     name = models.CharField(max_length=100)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='counties')
@@ -36,6 +38,7 @@ class County(models.Model):
 
     def __str__(self):
         return f"{self.name}, {self.country.name}"
+
 
 class Patient(models.Model):
     GENDER_CHOICES = [
@@ -66,11 +69,13 @@ class Patient(models.Model):
             pass
         super().save(*args, **kwargs)
 
+
 class Specialty(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
+
 
 class Insuarance(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -80,7 +85,6 @@ class Insuarance(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        # Delete old logo when updating with a new one
         try:
             old = Insuarance.objects.get(pk=self.pk)
             if old.logo and old.logo != self.logo:
@@ -89,6 +93,7 @@ class Insuarance(models.Model):
         except Insuarance.DoesNotExist:
             pass
         super().save(*args, **kwargs)
+
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor')
@@ -124,42 +129,79 @@ class Doctor(models.Model):
     def __str__(self):
         return self.full_name
 
+
 class DoctorAvailability(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availabilities')
-    start_time = models.DateTimeField(help_text="Start of the 30-minute availability slot")
-    end_time = models.DateTimeField(help_text="Automatically set to start_time + 30 minutes", editable=False)
-    is_recurring = models.BooleanField(default=False, help_text="If true, this slot repeats weekly on the same day/time")
-    recurrence_day_of_week = models.IntegerField(null=True, blank=True, help_text="0=Monday ... 6=Sunday — only used if is_recurring=True")
-    recurrence_end_date = models.DateField(null=True, blank=True, help_text="Optional: stop recurring after this date")
+
+    start_time_of_day = models.TimeField(
+        default=time(8, 0, 0),  # ← Default: 09:00:00
+        help_text="Start time of day for recurring block (e.g., 09:00:00)"
+    )
+    end_time_of_day = models.TimeField(
+        default=time(18, 0, 0),  # ← Default: 17:00:00
+        help_text="End time of day for recurring block (e.g., 17:00:00)"
+    )
+    
+    # For one-time availability (optional)
+    specific_date = models.DateField(null=True, blank=True)
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    
+    is_recurring = models.BooleanField(default=False)
+    recurrence_day_of_week = models.IntegerField(
+        null=True, blank=True,
+        help_text="0=Monday ... 6=Sunday — only used if is_recurring=True"
+    )
+    recurrence_end_date = models.DateField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('doctor', 'start_time')
-        ordering = ['start_time']
-        indexes = [
-            models.Index(fields=['doctor', 'start_time']),
-            models.Index(fields=['start_time']),
+        ordering = ['recurrence_day_of_week', 'start_time_of_day', 'specific_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['doctor', 'is_recurring', 'recurrence_day_of_week', 'specific_date'],
+                name='unique_availability_block_per_doctor'
+            )
         ]
 
     def clean(self):
-        if self.end_time and self.end_time != self.start_time + timedelta(minutes=30):
-            raise ValidationError("End time must be exactly 30 minutes after start time.")
+        if self.is_recurring:
+            if self.start_time_of_day >= self.end_time_of_day:
+                raise ValidationError("Start time must be before end time for recurring blocks")
+            if self.recurrence_day_of_week is None:
+                raise ValidationError("Recurring availability requires a day of week (0-6)")
+        else:
+            if self.specific_date is None or self.start_time is None or self.end_time is None:
+                raise ValidationError("One-time availability requires specific date and times")
+            if self.start_time >= self.end_time:
+                raise ValidationError("Start time must be before end time for one-time blocks")
 
     def save(self, *args, **kwargs):
-        self.end_time = self.start_time + timedelta(minutes=30)
-        if self.is_recurring and self.recurrence_day_of_week is None:
-            self.recurrence_day_of_week = self.start_time.weekday()
+        self.full_clean()  # Runs clean() validation
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.doctor.full_name} - {self.start_time.strftime('%Y-%m-%d %H:%M')} to {self.end_time.strftime('%H:%M')}"
+        if self.is_recurring:
+            days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            day_name = days[self.recurrence_day_of_week] if self.recurrence_day_of_week is not None else "?"
+            return f"{self.doctor.full_name} - Recurring {day_name} {self.start_time_of_day}–{self.end_time_of_day}"
+        return f"{self.doctor.full_name} - One-time {self.specific_date} {self.start_time.time()}–{self.end_time.time()}"
+
 
 class Organization(models.Model):
     name = models.CharField(max_length=200)
     type = models.CharField(max_length=100, blank=True)
 
+    def __str__(self):
+        return self.name
+
+
 class OrganizationClinic(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+
 
 class Appointment(models.Model):
     MODE_CHOICES = [('TELE', 'Teleconsult'), ('CLINIC', 'Clinic Visit'), ('HOME', 'Homecare')]
@@ -213,6 +255,7 @@ class Appointment(models.Model):
     def __str__(self):
         return f"{self.patient} with {self.doctor} - {self.get_status_display()}"
 
+
 class PatientDoctorBookmark(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
@@ -221,12 +264,20 @@ class PatientDoctorBookmark(models.Model):
     class Meta:
         unique_together = ('patient', 'doctor')
 
+    def __str__(self):
+        return f"{self.patient} bookmarked {self.doctor}"
+
+
 class Notification(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     description = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.patient}"
+
 
 class AIChatMessage(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='ai_chat_messages')
@@ -241,4 +292,5 @@ class AIChatMessage(models.Model):
         ]
 
     def __str__(self):
-        return f"{'User' if self.is_from_user else 'AI'} to {self.patient} at {self.created_at}"
+        sender = 'User' if self.is_from_user else 'AI'
+        return f"{sender} to {self.patient} at {self.created_at}"

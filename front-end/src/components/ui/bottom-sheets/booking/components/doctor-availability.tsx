@@ -10,6 +10,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { FlashList } from "@shopify/flash-list";
+
+// Use the correct new hook
 import { useDoctor } from "~/lib/hooks/useDoctor";
 
 const { width } = Dimensions.get("window");
@@ -20,26 +22,26 @@ const DoctorAvailability: React.FC<{
   onSelectSlot: (slot: any) => void;
   selectedSlot?: any;
 }> = ({ doctorId, onSelectSlot, selectedSlot }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const numericDoctorId =
-    typeof doctorId === "string" ? parseInt(doctorId) : doctorId;
-  const { doctor, loading, error } = useDoctor(numericDoctorId);
+  // New hook that handles date + slots correctly
+  const {
+    doctor,
+    slots, // ← already filtered available (not booked) slots for selected date
+    loading,
+    error,
+    selectedDate,
+    setSelectedDate,
+  } = useDoctor(doctorId);
 
-  const formatTime = (dateString: string) =>
-    format(new Date(dateString), "hh:mm a");
-  const formatDate = (dateString: string) =>
-    format(new Date(dateString), "EEE, MMM dd");
+  // Formatting helpers (unchanged)
+  const formatTime = (dateString?: string | null) =>
+    dateString ? format(new Date(dateString), "hh:mm a") : "";
+
+  const formatDate = (dateString?: string | null) =>
+    dateString ? format(new Date(dateString), "EEE, MMM dd") : "";
+
   const formatFullDate = (date: Date) => format(date, "EEEE, MMMM dd, yyyy");
-
-  const filterSlotsByDate = (slots: any[]) => {
-    const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
-    return slots.filter(
-      (slot) =>
-        format(new Date(slot.startTime), "yyyy-MM-dd") === selectedDateStr
-    );
-  };
 
   const handleDateChange = (event: any, date?: Date) => {
     setShowDatePicker(false);
@@ -71,13 +73,8 @@ const DoctorAvailability: React.FC<{
     );
   }
 
-  const availabilities = doctor?.availabilities || [];
-  const availableSlots = availabilities.filter((slot: any) => !slot.isBooked);
-  const filteredSlots = filterSlotsByDate(availableSlots);
-
-  console.log(filteredSlots);
-
-  if (availableSlots.length === 0) {
+  // No available slots at all
+  if (slots.length === 0) {
     return (
       <View className="flex-1 justify-center items-center py-12">
         <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
@@ -90,7 +87,6 @@ const DoctorAvailability: React.FC<{
 
   const renderSlotItem = ({ item }: { item: any }) => {
     const isSelected = selectedSlot?.id === item.id;
-
     return (
       <TouchableOpacity
         onPress={() => onSelectSlot(item)}
@@ -128,7 +124,7 @@ const DoctorAvailability: React.FC<{
 
   return (
     <View className="gap-2">
-      {/* Date Picker */}
+      {/* Date Picker - exactly same UI */}
       <View className="bg-card rounded-2xl p-6 border border-gray-200">
         <View className="flex-row items-center gap-2 mb-3">
           <Ionicons name="calendar" size={24} color="rgb(14, 103, 126)" />
@@ -142,6 +138,7 @@ const DoctorAvailability: React.FC<{
             {formatFullDate(selectedDate)}
           </Text>
         </TouchableOpacity>
+
         {showDatePicker && (
           <DateTimePicker
             value={selectedDate}
@@ -152,8 +149,9 @@ const DoctorAvailability: React.FC<{
           />
         )}
       </View>
-      {/* Available Slots Header */}
-      {filteredSlots.length !== 0 && (
+
+      {/* Available Slots Header - same style */}
+      {slots.length !== 0 && (
         <View className="bg-card rounded-2xl p-6 border border-gray-200">
           <View className="flex-row items-center gap-3 mb-2">
             <Ionicons name="time-outline" size={24} color="rgb(14, 103, 126)" />
@@ -162,12 +160,13 @@ const DoctorAvailability: React.FC<{
             </Text>
           </View>
           <Text className="text-muted-foreground">
-            {filteredSlots.length} slot{filteredSlots.length !== 1 ? "s" : ""}{" "}
-            available on this date
+            {slots.length} slot{slots.length !== 1 ? "s" : ""} available on this
+            date
           </Text>
         </View>
       )}
-      {/* Selected Slot Summary - MOVED TO TOP */}
+
+      {/* Selected Slot Summary - unchanged */}
       {selectedSlot && (
         <View className="bg-primary rounded-2xl p-6 mx-4 shadow-lg">
           <View className="flex-row items-center gap-3 mb-3">
@@ -185,8 +184,9 @@ const DoctorAvailability: React.FC<{
           </Text>
         </View>
       )}
-      {/* 3-Column Grid */}
-      {filteredSlots.length === 0 ? (
+
+      {/* 3-Column Grid - same look */}
+      {slots.length === 0 ? (
         <View className="bg-card rounded-2xl p-8 border border-gray-200 items-center">
           <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
           <Text className="mt-4 text-muted-foreground text-center">
@@ -199,15 +199,13 @@ const DoctorAvailability: React.FC<{
       ) : (
         <View className="px-1">
           <FlashList
-            data={filteredSlots}
+            data={slots}
             renderItem={renderSlotItem}
             numColumns={3}
-            // ← UNIQUE KEY: combine id + startTime
-            keyExtractor={(item) => `${item.id}-${item.startTime}`}
+            keyExtractor={(item) => `${item?.id}-${item?.startTime}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 1 }}
           />
-         
         </View>
       )}
     </View>

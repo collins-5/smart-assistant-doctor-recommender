@@ -4,15 +4,23 @@ from graphene_django import DjangoObjectType
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 from graphql_jwt.shortcuts import get_token
-from datetime import timedelta
+from datetime import timedelta, datetime, time, date
 from django.contrib.auth import authenticate
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-import uuid
-from graphene_file_upload.scalars import Upload
+from django.db import models
 from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+import uuid
+from graphene_file_upload.scalars import Upload
+
+# Import channels only if available (for notifications)
+try:
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    CHANNELS_AVAILABLE = True
+except ImportError:
+    CHANNELS_AVAILABLE = False
+
 from .models import (
     User, Patient, Doctor, Appointment, Specialty,
     PatientDoctorBookmark, Notification, Country, County,
@@ -24,10 +32,12 @@ class CountryType(DjangoObjectType):
         model = Country
         fields = ("id", "name", "code")
 
+
 class CountyType(DjangoObjectType):
     class Meta:
         model = County
         fields = ("id", "name", "country")
+
 
 class PatientType(DjangoObjectType):
     email = graphene.String()
@@ -50,6 +60,7 @@ class PatientType(DjangoObjectType):
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
 
+
 class UserType(DjangoObjectType):
     patient = graphene.Field(PatientType)
 
@@ -63,23 +74,40 @@ class UserType(DjangoObjectType):
         except AttributeError:
             return None
 
+
 class DoctorAvailabilityType(DjangoObjectType):
     is_booked = graphene.Boolean(description="True if an appointment overlaps this slot")
 
     class Meta:
         model = DoctorAvailability
-        fields = ("id", "start_time", "end_time", "is_recurring")
+        fields = ("id", "doctor", "start_time_of_day", "end_time_of_day", "start_time", "end_time", "is_recurring", 
+                  "recurrence_day_of_week", "recurrence_end_date")
 
     def resolve_is_booked(self, info):
         return Appointment.objects.filter(
             doctor=self.doctor,
-            start_time__lt=self.end_time,
-            end_time__gt=self.start_time,
+            start_time=self.start_time,
+            status__in=['UPCOMING', 'ONGOING']
         ).exists()
+
+
+class AvailableSlotType(graphene.ObjectType):
+    id = graphene.String()
+    doctor_id = graphene.Int()
+    start_time = graphene.DateTime()
+    end_time = graphene.DateTime()
+    is_booked = graphene.Boolean()
+    is_recurring = graphene.Boolean()
+
 
 class DoctorType(DjangoObjectType):
     profile_picture_url = graphene.String()
-    availabilities = graphene.List(DoctorAvailabilityType)
+    available_slots = graphene.List(
+        AvailableSlotType,
+        start_date=graphene.Date(),
+        end_date=graphene.Date(),
+        description="Get 30-minute time slots within a date range"
+    )
 
     class Meta:
         model = Doctor
@@ -90,50 +118,102 @@ class DoctorType(DjangoObjectType):
             return info.context.build_absolute_uri(self.profile_picture.url)
         return None
 
-    def resolve_availabilities(self, info):
+    def resolve_available_slots(self, info, start_date=None, end_date=None):
         now = timezone.now()
-        two_weeks_later = now + timedelta(weeks=2)
+        
+        if start_date is None:
+            start_date = now.date()
+        if end_date is None:
+            end_date = (now + timedelta(days=30)).date()
+        
+        start_datetime = datetime.combine(start_date, time.min).replace(tzinfo=now.tzinfo)
+        end_datetime = datetime.combine(end_date, time.max).replace(tzinfo=now.tzinfo)
+        
+        availability_rules = DoctorAvailability.objects.filter(doctor=self)
+        
+        generated_slots = []
+        seen_slots = set()
+        
+        for rule in availability_rules:
+            if rule.is_recurring:
+                current_date = start_date
+                
+                while current_date.weekday() != rule.recurrence_day_of_week:
+                    current_date += timedelta(days=1)
+                    if current_date > end_date:
+                        break
+                
+                while current_date <= end_date:
+                    if rule.recurrence_end_date and current_date > rule.recurrence_end_date:
+                        break
+                    
+                    block_start = datetime.combine(current_date, rule.start_time_of_day).replace(tzinfo=now.tzinfo)
+                    block_end = datetime.combine(current_date, rule.end_time_of_day).replace(tzinfo=now.tzinfo)
+                    
+                    current = block_start
+                    while True:
+                        next_slot = current + timedelta(minutes=30)
+                        if next_slot > block_end:
+                            break
+                        
+                        if current >= now:
+                            slot_key = current.isoformat()
+                            
+                            if slot_key not in seen_slots:
+                                is_booked = Appointment.objects.filter(
+                                    doctor=self,
+                                    start_time=current,
+                                    status__in=['UPCOMING', 'ONGOING']
+                                ).exists()
+                                
+                                generated_slots.append(AvailableSlotType(
+                                    id=f"recurring_{rule.id}_{slot_key}",
+                                    doctor_id=self.id,
+                                    start_time=current,
+                                    end_time=next_slot,
+                                    is_booked=is_booked,
+                                    is_recurring=True
+                                ))
+                                seen_slots.add(slot_key)
+                        
+                        current = next_slot
+                    
+                    current_date += timedelta(weeks=1)
+            
+            else:
+                if start_datetime <= rule.start_time <= end_datetime and rule.start_time >= now:
+                    current = rule.start_time
+                    block_end = rule.end_time
+                    
+                    while True:
+                        next_slot = current + timedelta(minutes=30)
+                        if next_slot > block_end:
+                            break
+                        
+                        slot_key = current.isoformat()
+                        
+                        if slot_key not in seen_slots:
+                            is_booked = Appointment.objects.filter(
+                                doctor=self,
+                                start_time=current,
+                                status__in=['UPCOMING', 'ONGOING']
+                            ).exists()
+                            
+                            generated_slots.append(AvailableSlotType(
+                                id=f"onetime_{rule.id}_{slot_key}",
+                                doctor_id=self.id,
+                                start_time=current,
+                                end_time=next_slot,
+                                is_booked=is_booked,
+                                is_recurring=False
+                            ))
+                            seen_slots.add(slot_key)
+                        
+                        current = next_slot
+        
+        generated_slots.sort(key=lambda x: x.start_time)
+        return generated_slots
 
-        base_slots = self.availabilities.filter(start_time__gte=now).order_by('start_time')
-        result = []
-        seen_slot_keys = set()  # Global deduplication: (date, time)
-
-        for base in base_slots:
-            if not base.is_recurring:
-                slot_key = (base.start_time.date().isoformat(), base.start_time.time().isoformat())
-                if slot_key not in seen_slot_keys:
-                    result.append(base)
-                    seen_slot_keys.add(slot_key)
-                continue
-
-            current = base.start_time
-            while current <= two_weeks_later:
-                if base.recurrence_end_date and current.date() > base.recurrence_end_date:
-                    break
-
-                slot_key = (current.date().isoformat(), current.time().isoformat())
-
-                if slot_key not in seen_slot_keys:
-                    virtual_slot = DoctorAvailability(
-                        id=base.id,
-                        doctor=base.doctor,
-                        start_time=current,
-                        end_time=current + timedelta(minutes=30),
-                        is_recurring=True,
-                    )
-                    virtual_slot.is_booked = Appointment.objects.filter(
-                        doctor=base.doctor,
-                        start_time__lt=virtual_slot.end_time,
-                        end_time__gt=virtual_slot.start_time,
-                    ).exists()
-
-                    result.append(virtual_slot)
-                    seen_slot_keys.add(slot_key)
-
-                current += timedelta(days=7)
-
-        result.sort(key=lambda s: s.start_time)
-        return result
 
 class AppointmentType(DjangoObjectType):
     status_display = graphene.String(description="Human readable status")
@@ -145,10 +225,13 @@ class AppointmentType(DjangoObjectType):
     def resolve_status_display(self, info):
         return self.get_status_display()
 
+
 class SpecialtyType(DjangoObjectType):
     class Meta:
         model = Specialty
         fields = "__all__"
+
+
 class InsuaranceType(DjangoObjectType):
     logo_url = graphene.String(description="Full URL to the insurance logo")
 
@@ -161,6 +244,7 @@ class InsuaranceType(DjangoObjectType):
             return info.context.build_absolute_uri(self.logo.url)
         return None
 
+
 class NotificationType(graphene.ObjectType):
     id = graphene.Int(required=True)
     title = graphene.String(required=True)
@@ -168,20 +252,24 @@ class NotificationType(graphene.ObjectType):
     createdAt = graphene.DateTime(required=True)
     isRead = graphene.Boolean(required=True)
 
+
 class BookmarkedDoctorType(DoctorType):
     class Meta:
         model = Doctor
         fields = "__all__"
+
 
 class AIChatMessageType(DjangoObjectType):
     class Meta:
         model = AIChatMessage
         fields = ("id", "text", "is_from_user", "created_at")
 
+
 class AppointmentInput(graphene.InputObjectType):
     doctor_id = graphene.Int(required=True)
     start_time = graphene.DateTime(required=True)
     encounter_mode = graphene.String(required=True)
+
 
 class CreatePatientProfileInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
@@ -194,6 +282,7 @@ class CreatePatientProfileInput(graphene.InputObjectType):
     country_id = graphene.Int()
     county_id = graphene.Int()
 
+
 class EditProfileInput(graphene.InputObjectType):
     first_name = graphene.String()
     last_name = graphene.String()
@@ -205,11 +294,15 @@ class EditProfileInput(graphene.InputObjectType):
     country_id = graphene.Int()
     county_id = graphene.Int()
 
-class CreateDoctorAvailabilityBlockInput(graphene.InputObjectType):
+
+class CreateDoctorAvailabilityInput(graphene.InputObjectType):
     doctor_id = graphene.Int()
-    start_time = graphene.DateTime(required=True)
-    end_time = graphene.DateTime(required=True)
-    is_recurring = graphene.Boolean(default_value=False)
+    start_time_of_day = graphene.Time(required=True, description="Start time of day (e.g., 09:00:00)")
+    end_time_of_day = graphene.Time(required=True, description="End time of day (e.g., 17:00:00)")
+    day_of_week = graphene.Int(required=True, description="0=Monday, 1=Tuesday, ..., 6=Sunday")
+    effective_date = graphene.Date(required=True, description="When this availability starts")
+    recurrence_end_date = graphene.Date(description="Optional end date for recurring availability")
+
 
 class SignIn(graphene.Mutation):
     class Arguments:
@@ -238,6 +331,7 @@ class SignIn(graphene.Mutation):
             raise Exception("Invalid credentials")
         token = get_token(user)
         return SignIn(jwt_token=token, user=user)
+
 
 class SignUp(graphene.Mutation):
     class Arguments:
@@ -270,6 +364,7 @@ class SignUp(graphene.Mutation):
         user.save()
         token = get_token(user)
         return SignUp(success=True, error=None, jwt_token=token, user=user)
+
 
 class CreatePatientProfile(graphene.Mutation):
     class Arguments:
@@ -323,6 +418,7 @@ class CreatePatientProfile(graphene.Mutation):
         )
         return CreatePatientProfile(success=True, error=None, patient=patient, user=user)
 
+
 class EditProfile(graphene.Mutation):
     class Arguments:
         input = EditProfileInput(required=True)
@@ -375,6 +471,7 @@ class EditProfile(graphene.Mutation):
         user.save()
         return EditProfile(patient=patient, user=user, success=True)
 
+
 class BookAppointment(graphene.Mutation):
     class Arguments:
         booking_args = AppointmentInput(required=True)
@@ -392,20 +489,50 @@ class BookAppointment(graphene.Mutation):
             doctor = Doctor.objects.get(pk=booking_args.doctor_id)
         except Doctor.DoesNotExist:
             raise Exception("Doctor not found")
+        
         proposed_end = booking_args.start_time + timedelta(minutes=30)
-        has_slot = DoctorAvailability.objects.filter(
+        now = timezone.now()
+        
+        if booking_args.start_time < now:
+            raise Exception("Cannot book appointments in the past")
+        
+        requested_day = booking_args.start_time.weekday()
+        requested_time = booking_args.start_time.time()
+        requested_date = booking_args.start_time.date()
+        
+        has_availability = False
+        
+        recurring_rules = DoctorAvailability.objects.filter(
             doctor=doctor,
-            start_time__lte=booking_args.start_time,
-            end_time__gte=proposed_end,
-        ).exists()
-        if not has_slot:
+            is_recurring=True,
+            recurrence_day_of_week=requested_day,
+            start_time_of_day__lte=requested_time,
+            end_time_of_day__gt=requested_time
+        )
+        
+        for rule in recurring_rules:
+            if rule.recurrence_end_date is None or requested_date <= rule.recurrence_end_date:
+                has_availability = True
+                break
+        
+        if not has_availability:
+            has_availability = DoctorAvailability.objects.filter(
+                doctor=doctor,
+                is_recurring=False,
+                start_time__lte=booking_args.start_time,
+                end_time__gte=proposed_end,
+            ).exists()
+        
+        if not has_availability:
             raise Exception("Doctor is not available at this time")
+        
         if Appointment.objects.filter(
             doctor=doctor,
-            start_time__lt=proposed_end,
-            end_time__gt=booking_args.start_time,
+            start_time=booking_args.start_time,
+            status__in=['UPCOMING', 'ONGOING']
         ).exists():
             raise Exception("This time slot is already booked")
+        
         appointment_cost = Decimal('2500.00')
         appt = Appointment.objects.create(
             patient=patient,
@@ -417,20 +544,27 @@ class BookAppointment(graphene.Mutation):
             payment_completed=False,
             rastuc_id=str(uuid.uuid4())
         )
-        async_to_sync(get_channel_layer().group_send)(
-            f"notifications_{patient.id}",
-            {
-                "type": "send_notification",
-                "notification": {
-                    "id": appt.id,
-                    "title": "Appointment Confirmed!",
-                    "description": f"With Dr. {appt.doctor.full_name}",
-                    "createdAt": appt.start_time.isoformat(),
-                    "isRead": False,
-                }
-            }
-        )
+        
+        if CHANNELS_AVAILABLE:
+            try:
+                async_to_sync(get_channel_layer().group_send)(
+                    f"notifications_{patient.id}",
+                    {
+                        "type": "send_notification",
+                        "notification": {
+                            "id": appt.id,
+                            "title": "Appointment Confirmed!",
+                            "description": f"With Dr. {appt.doctor.full_name}",
+                            "createdAt": appt.start_time.isoformat(),
+                            "isRead": False,
+                        }
+                    }
+                )
+            except Exception:
+                pass
+        
         return BookAppointment(appointment=appt)
+
 
 class BookmarkDoctor(graphene.Mutation):
     class Arguments:
@@ -448,6 +582,7 @@ class BookmarkDoctor(graphene.Mutation):
         doctor = Doctor.objects.get(pk=doctor_id)
         PatientDoctorBookmark.objects.get_or_create(patient=user.patient, doctor=doctor)
         return BookmarkDoctor(success=True, doctor=doctor)
+
 
 class UnbookmarkDoctor(graphene.Mutation):
     class Arguments:
@@ -467,6 +602,7 @@ class UnbookmarkDoctor(graphene.Mutation):
             return UnbookmarkDoctor(success=True)
         except PatientDoctorBookmark.DoesNotExist:
             return UnbookmarkDoctor(success=False)
+
 
 class UploadProfilePicture(graphene.Mutation):
     class Arguments:
@@ -490,6 +626,7 @@ class UploadProfilePicture(graphene.Mutation):
         patient.save()
         return UploadProfilePicture(success=True, error=None, patient=patient)
 
+
 class RemoveProfilePicture(graphene.Mutation):
     success = graphene.Boolean()
     error = graphene.String()
@@ -509,7 +646,6 @@ class RemoveProfilePicture(graphene.Mutation):
             patient.save()
         return RemoveProfilePicture(success=True, error=None, patient=patient)
 
-# Add this inside your Mutation class or as a separate mutation
 
 class UploadInsuranceLogo(graphene.Mutation):
     class Arguments:
@@ -539,11 +675,12 @@ class UploadInsuranceLogo(graphene.Mutation):
         insurance.save()
         return UploadInsuranceLogo(success=True, error=None, insurance=insurance)
 
-class CreateDoctorAvailabilityBlock(graphene.Mutation):
-    class Arguments:
-        input = CreateDoctorAvailabilityBlockInput(required=True)
 
-    availabilities = graphene.List(DoctorAvailabilityType)
+class CreateDoctorAvailability(graphene.Mutation):
+    class Arguments:
+        input = CreateDoctorAvailabilityInput(required=True)
+
+    availability = graphene.Field(DoctorAvailabilityType)
     success = graphene.Boolean()
     error = graphene.String()
 
@@ -551,49 +688,99 @@ class CreateDoctorAvailabilityBlock(graphene.Mutation):
     @login_required
     def mutate(root, info, input):
         user = info.context.user
+        
         if user.is_staff:
             if not input.doctor_id:
-                return CreateDoctorAvailabilityBlock(success=False, error="Staff users must provide doctor_id")
+                return CreateDoctorAvailability(success=False, error="Staff users must provide doctor_id")
             try:
                 doctor = Doctor.objects.get(id=input.doctor_id)
             except Doctor.DoesNotExist:
-                return CreateDoctorAvailabilityBlock(success=False, error="Specified doctor not found")
+                return CreateDoctorAvailability(success=False, error="Doctor not found")
         else:
             try:
                 doctor = user.doctor
             except AttributeError:
-                return CreateDoctorAvailabilityBlock(success=False, error="Only doctors or staff can create availability")
-        if input.start_time >= input.end_time:
-            return CreateDoctorAvailabilityBlock(success=False, error="Start time must be before end time")
-        if (input.end_time - input.start_time) < timedelta(minutes=30):
-            return CreateDoctorAvailabilityBlock(success=False, error="Block must be at least 30 minutes long")
-        created_slots = []
-        current_start = input.start_time
-        while current_start + timedelta(minutes=30) <= input.end_time:
-            proposed_end = current_start + timedelta(minutes=30)
-            if DoctorAvailability.objects.filter(
-                doctor=doctor,
-                start_time__lt=proposed_end,
-                end_time__gt=current_start,
-            ).exists():
-                return CreateDoctorAvailabilityBlock(
-                    success=False,
-                    error=f"Overlap detected at {current_start.strftime('%Y-%m-%d %H:%M')}"
-                )
-            slot = DoctorAvailability.objects.create(
-                doctor=doctor,
-                start_time=current_start,
-                end_time=proposed_end,
-                is_recurring=input.is_recurring,
-                recurrence_day_of_week=current_start.weekday() if input.is_recurring else None,
+                return CreateDoctorAvailability(success=False, error="Only doctors or staff can create availability")
+        
+        if input.start_time_of_day >= input.end_time_of_day:
+            return CreateDoctorAvailability(success=False, error="Start time must be before end time")
+        
+        if input.day_of_week < 0 or input.day_of_week > 6:
+            return CreateDoctorAvailability(success=False, error="day_of_week must be 0-6 (Monday-Sunday)")
+        
+        duration = datetime.combine(date.min, input.end_time_of_day) - datetime.combine(date.min, input.start_time_of_day)
+        if duration < timedelta(minutes=30):
+            return CreateDoctorAvailability(success=False, error="Availability block must be at least 30 minutes")
+        
+        # Calculate the effective start date for overlap check
+        current_date = input.effective_date
+        while current_date.weekday() != input.day_of_week:
+            current_date += timedelta(days=1)
+        
+        # Overlap check
+        overlapping = DoctorAvailability.objects.filter(
+            doctor=doctor,
+            is_recurring=True,
+            recurrence_day_of_week=input.day_of_week,
+            start_time_of_day__lt=input.end_time_of_day,
+            end_time_of_day__gt=input.start_time_of_day
+        )
+        
+        if input.recurrence_end_date:
+            overlapping = overlapping.filter(
+                models.Q(recurrence_end_date__isnull=True) | 
+                models.Q(recurrence_end_date__gte=current_date)
             )
-            created_slots.append(slot)
-            current_start = proposed_end
-        return CreateDoctorAvailabilityBlock(
-            availabilities=created_slots,
+        
+        if overlapping.exists():
+            return CreateDoctorAvailability(
+                success=False,
+                error="Overlapping availability exists for this day and time"
+            )
+        
+        availability = DoctorAvailability.objects.create(
+            doctor=doctor,
+            start_time_of_day=input.start_time_of_day,
+            end_time_of_day=input.end_time_of_day,
+            is_recurring=True,
+            recurrence_day_of_week=input.day_of_week,
+            recurrence_end_date=input.recurrence_end_date
+        )
+        
+        return CreateDoctorAvailability(
+            availability=availability,
             success=True,
             error=None
         )
+
+
+class DeleteDoctorAvailability(graphene.Mutation):
+    class Arguments:
+        availability_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    error = graphene.String()
+
+    @staticmethod
+    @login_required
+    def mutate(root, info, availability_id):
+        user = info.context.user
+        
+        try:
+            availability = DoctorAvailability.objects.get(id=availability_id)
+        except DoctorAvailability.DoesNotExist:
+            return DeleteDoctorAvailability(success=False, error="Availability not found")
+        
+        if not user.is_staff:
+            try:
+                if availability.doctor != user.doctor:
+                    return DeleteDoctorAvailability(success=False, error="Not authorized")
+            except AttributeError:
+                return DeleteDoctorAvailability(success=False, error="Not authorized")
+        
+        availability.delete()
+        return DeleteDoctorAvailability(success=True, error=None)
+
 
 class SendAIChatMessage(graphene.Mutation):
     class Arguments:
@@ -618,6 +805,7 @@ class SendAIChatMessage(graphene.Mutation):
         )
         return SendAIChatMessage(message=message, success=True, error=None)
 
+
 class CancelAppointment(graphene.Mutation):
     class Arguments:
         appointment_id = graphene.Int(required=True)
@@ -641,28 +829,38 @@ class CancelAppointment(graphene.Mutation):
         except ValidationError as e:
             return CancelAppointment(success=False, error=str(e))
 
-        async_to_sync(get_channel_layer().group_send)(
-            f"notifications_{user.patient.id}",
-            {
-                "type": "send_notification",
-                "notification": {
-                    "id": appointment.id,
-                    "title": "Appointment Cancelled",
-                    "description": f"Your appointment with Dr. {appointment.doctor.full_name} has been cancelled.",
-                    "createdAt": timezone.now().isoformat(),
-                    "isRead": False,
-                }
-            }
-        )
+        if CHANNELS_AVAILABLE:
+            try:
+                async_to_sync(get_channel_layer().group_send)(
+                    f"notifications_{user.patient.id}",
+                    {
+                        "type": "send_notification",
+                        "notification": {
+                            "id": appointment.id,
+                            "title": "Appointment Cancelled",
+                            "description": f"Your appointment with Dr. {appointment.doctor.full_name} has been cancelled.",
+                            "createdAt": timezone.now().isoformat(),
+                            "isRead": False,
+                        }
+                    }
+                )
+            except Exception:
+                pass
 
         return CancelAppointment(appointment=appointment, success=True)
+
 
 class Query(graphene.ObjectType):
     hello = graphene.String(default_value="Health Backend API is LIVE!")
     me = graphene.Field(UserType)
     doctors = graphene.List(DoctorType)
     doctor = graphene.Field(DoctorType, id=graphene.Int(required=True))
-    doctor_availabilities = graphene.List(DoctorAvailabilityType, id=graphene.Int(required=True))
+    doctor_available_slots = graphene.List(
+        AvailableSlotType,
+        doctor_id=graphene.Int(required=True),
+        start_date=graphene.Date(),
+        end_date=graphene.Date()
+    )
     specialties = graphene.List(SpecialtyType)
     insuarances = graphene.List(InsuaranceType)
     patients = graphene.List(PatientType)
@@ -684,54 +882,106 @@ class Query(graphene.ObjectType):
         except Doctor.DoesNotExist:
             return None
 
-    def resolve_doctor_availabilities(self, info, id):
+    def resolve_doctor_available_slots(self, info, doctor_id, start_date=None, end_date=None):
         try:
-            doctor = Doctor.objects.get(pk=id)
-            now = timezone.now()
-            two_weeks_later = now + timedelta(weeks=2)
-
-            base_slots = doctor.availabilities.filter(start_time__gte=now).order_by('start_time')
-            result = []
-            seen_slot_keys = set()
-
-            for base in base_slots:
-                if not base.is_recurring:
-                    slot_key = (base.start_time.date().isoformat(), base.start_time.time().isoformat())
-                    if slot_key not in seen_slot_keys:
-                        result.append(base)
-                        seen_slot_keys.add(slot_key)
-                    continue
-
-                current = base.start_time
-                while current <= two_weeks_later:
-                    if base.recurrence_end_date and current.date() > base.recurrence_end_date:
-                        break
-
-                    slot_key = (current.date().isoformat(), current.time().isoformat())
-
-                    if slot_key not in seen_slot_keys:
-                        virtual = DoctorAvailability(
-                            id=base.id,
-                            doctor=base.doctor,
-                            start_time=current,
-                            end_time=current + timedelta(minutes=30),
-                            is_recurring=True,
-                        )
-                        virtual.is_booked = Appointment.objects.filter(
-                            doctor=base.doctor,
-                            start_time__lt=virtual.end_time,
-                            end_time__gt=virtual.start_time,
-                        ).exists()
-                        result.append(virtual)
-                        seen_slot_keys.add(slot_key)
-
-                    current += timedelta(days=7)
-
-            result.sort(key=lambda s: s.start_time)
-            return result
-
+            doctor = Doctor.objects.get(id=doctor_id)
         except Doctor.DoesNotExist:
             return []
+        
+        now = timezone.now()
+        
+        if start_date is None:
+            start_date = now.date()
+        if end_date is None:
+            end_date = (now + timedelta(days=30)).date()
+        
+        start_datetime = datetime.combine(start_date, time.min).replace(tzinfo=now.tzinfo)
+        end_datetime = datetime.combine(end_date, time.max).replace(tzinfo=now.tzinfo)
+        
+        availability_rules = DoctorAvailability.objects.filter(doctor=doctor)
+        
+        generated_slots = []
+        seen_slots = set()
+        
+        for rule in availability_rules:
+            if rule.is_recurring:
+                current_date = start_date
+                
+                while current_date.weekday() != rule.recurrence_day_of_week:
+                    current_date += timedelta(days=1)
+                    if current_date > end_date:
+                        break
+                
+                while current_date <= end_date:
+                    if rule.recurrence_end_date and current_date > rule.recurrence_end_date:
+                        break
+                    
+                    block_start = datetime.combine(current_date, rule.start_time_of_day).replace(tzinfo=now.tzinfo)
+                    block_end = datetime.combine(current_date, rule.end_time_of_day).replace(tzinfo=now.tzinfo)
+                    
+                    current = block_start
+                    while True:
+                        next_slot = current + timedelta(minutes=30)
+                        if next_slot > block_end:
+                            break
+                        
+                        if current >= now:
+                            slot_key = current.isoformat()
+                            
+                            if slot_key not in seen_slots:
+                                is_booked = Appointment.objects.filter(
+                                    doctor=doctor,
+                                    start_time=current,
+                                    status__in=['UPCOMING', 'ONGOING']
+                                ).exists()
+                                
+                                generated_slots.append(AvailableSlotType(
+                                    id=f"recurring_{rule.id}_{slot_key}",
+                                    doctor_id=doctor.id,
+                                    start_time=current,
+                                    end_time=next_slot,
+                                    is_booked=is_booked,
+                                    is_recurring=True
+                                ))
+                                seen_slots.add(slot_key)
+                        
+                        current = next_slot
+                    
+                    current_date += timedelta(weeks=1)
+            
+            else:
+                if start_datetime <= rule.start_time <= end_datetime and rule.start_time >= now:
+                    current = rule.start_time
+                    block_end = rule.end_time
+                    
+                    while True:
+                        next_slot = current + timedelta(minutes=30)
+                        if next_slot > block_end:
+                            break
+                        
+                        slot_key = current.isoformat()
+                        
+                        if slot_key not in seen_slots:
+                            is_booked = Appointment.objects.filter(
+                                doctor=doctor,
+                                start_time=current,
+                                status__in=['UPCOMING', 'ONGOING']
+                            ).exists()
+                            
+                            generated_slots.append(AvailableSlotType(
+                                id=f"onetime_{rule.id}_{slot_key}",
+                                doctor_id=doctor.id,
+                                start_time=current,
+                                end_time=next_slot,
+                                is_booked=is_booked,
+                                is_recurring=False
+                            ))
+                            seen_slots.add(slot_key)
+                        
+                        current = next_slot
+        
+        generated_slots.sort(key=lambda x: x.start_time)
+        return generated_slots
 
     def resolve_specialties(self, info):
         return Specialty.objects.all()
@@ -751,7 +1001,6 @@ class Query(graphene.ObjectType):
         
         queryset = Appointment.objects.filter(patient=user.patient)
 
-        # Force status update on every query
         now = timezone.now()
         for appt in queryset:
             if appt.status in ['UPCOMING', 'ONGOING']:
@@ -759,7 +1008,7 @@ class Query(graphene.ObjectType):
                     appt.status = 'ONGOING'
                 elif now > appt.end_time:
                     appt.status = 'COMPLETED'
-                if appt.status != appt._state.fields_cache.get('status'):
+                if appt.status != appt._state.fields_cache.get('status', appt.status):
                     appt.save(update_fields=['status'])
 
         if status:
@@ -776,10 +1025,10 @@ class Query(graphene.ObjectType):
         bookmarks = PatientDoctorBookmark.objects.filter(patient=patient).values_list("doctor_id", flat=True)
         return Doctor.objects.filter(id__in=bookmarks).order_by('-patientdoctorbookmark__created_at')
 
-    def resolve_countries(root, info):
+    def resolve_countries(self, info):
         return Country.objects.all()
 
-    def resolve_counties(root, info, country_id=None):
+    def resolve_counties(self, info, country_id=None):
         if country_id:
             return County.objects.filter(country_id=country_id)
         return County.objects.all()
@@ -790,6 +1039,7 @@ class Query(graphene.ObjectType):
         if not hasattr(user, "patient"):
             return AIChatMessage.objects.none()
         return user.patient.ai_chat_messages.all().order_by('created_at')
+
 
 class Subscription(graphene.ObjectType):
     retrieve_new_notifications = graphene.Field(
@@ -806,6 +1056,7 @@ class Subscription(graphene.ObjectType):
             raise Exception("Unauthorized")
         return [f"notifications_{patient_id}"]
 
+
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
@@ -819,9 +1070,11 @@ class Mutation(graphene.ObjectType):
     unbookmark_doctor = UnbookmarkDoctor.Field()
     upload_profile_picture = UploadProfilePicture.Field()
     remove_profile_picture = RemoveProfilePicture.Field()
-    create_doctor_availability_block = CreateDoctorAvailabilityBlock.Field()
+    create_doctor_availability = CreateDoctorAvailability.Field()
+    delete_doctor_availability = DeleteDoctorAvailability.Field()
     send_ai_chat_message = SendAIChatMessage.Field()
     cancel_appointment = CancelAppointment.Field()
     upload_insurance_logo = UploadInsuranceLogo.Field()
+
 
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

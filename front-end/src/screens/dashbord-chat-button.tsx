@@ -16,11 +16,11 @@ const DashbordChatButton = () => {
       style={{ elevation: 10 }}
       activeOpacity={0.9}
     >
-      <View className="self-center p-2 bg-muted roundel-full mx-1 ">
+      {/* <View className="self-center p-2 bg-muted -z-20 roundel-full mx-1 ">
         <Text className="font-medium text-primary text-2xl mr-4">
           How are you feeling today?
         </Text>
-      </View>
+      </View> */}
       <View className="bg-primary rounded-full shadow-2xl flex-row items-center p-5">
         <Ionicons name="chatbubble-ellipses" size={32} color="white" />
       </View>

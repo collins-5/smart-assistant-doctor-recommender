@@ -1,22 +1,17 @@
-# src/graphql/queries/getDoctor.graphql
-
-query GetDoctor($id: Int!) {
+query GetDoctorWithAvailableSlots($id: Int!, $date: Date!) {
   doctor(id: $id) {
     id
     title
     bio
     firstName
-    county {
-      name
-      country {
-        name
-      }
-    }
     lastName
     fullName
     profilePictureUrl
     takesPrepaidPayment
     takesPostpaidPayment
+    teleconsultPrice
+    clinicVisitPrice
+    homecarePrice
     primarySpecialty {
       id
       name
@@ -25,9 +20,6 @@ query GetDoctor($id: Int!) {
       id
       name
     }
-    teleconsultPrice
-    clinicVisitPrice
-    homecarePrice
     insuarance {
       id
       name
@@ -37,12 +29,20 @@ query GetDoctor($id: Int!) {
       phoneNumber
       email
     }
-    availabilities {
+    county {
+      name
+      country {
+        name
+      }
+    }
+
+    availableSlots(startDate: $date, endDate: $date) {
       id
+      doctorId
       startTime
       endTime
-      isRecurring
       isBooked
+      isRecurring
     }
   }
 }

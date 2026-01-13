@@ -1,11 +1,12 @@
-# core/admin.py — FINAL WITH APPOINTMENT STATUS FILTER
+# core/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
 from django import forms
 from django.core.files.base import ContentFile
 from django.utils.html import format_html
-from datetime import timedelta
+from datetime import datetime, timedelta, time
+from django.utils import timezone
 import os
 from .models import (
     User, Patient, Doctor, Specialty, Appointment,
@@ -14,8 +15,9 @@ from .models import (
     AIChatMessage,
 )
 
-# Optional: cleaner sidebar (remove Groups)
+# Optional: cleaner sidebar - remove Groups
 admin.site.unregister(Group)
+
 
 # ====================== USER ADMIN ======================
 @admin.register(User)
@@ -35,6 +37,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('email', 'phone_number', 'password1', 'password2', 'is_staff', 'is_active'),
         }),
     )
+
 
 # ====================== PATIENT ADMIN WITH SAFE FILE UPLOAD ======================
 class PatientAdminForm(forms.ModelForm):
@@ -56,6 +59,7 @@ class PatientAdminForm(forms.ModelForm):
                 pass
         return file
 
+
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
     form = PatientAdminForm
@@ -73,61 +77,100 @@ class PatientAdmin(admin.ModelAdmin):
         return "(No photo)"
     preview_photo.short_description = "Photo"
 
-# ====================== DOCTOR AVAILABILITY INLINE ======================
-class DoctorAvailabilityInline(admin.TabularInline):
-    model = DoctorAvailability
-    extra = 1
-    ordering = ('start_time',)
-    fields = ('start_time', 'is_recurring', 'end_time_display')
-    readonly_fields = ('end_time_display',)
-
-    def end_time_display(self, obj):
-        if obj.pk and obj.start_time:
-            end = obj.start_time + timedelta(minutes=30)
-            return end.strftime('%Y-%m-%d %H:%M')
-        return "— (Will be set to +30 min after save)"
-    end_time_display.short_description = "End Time"
 
 # ====================== DOCTOR ADMIN ======================
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'get_email', 'primary_specialty', 'takes_prepaid_payment', 'teleconsult_price')
+    list_display = (
+        'full_name',
+        'get_email',                    # Method defined below
+        'primary_specialty',
+        'takes_prepaid_payment',
+        'teleconsult_price'
+    )
     list_filter = ('primary_specialty', 'takes_prepaid_payment', 'takes_postpaid_payment')
     search_fields = ('user__email', 'first_name', 'last_name', 'full_name')
     raw_id_fields = ('user', 'primary_specialty')
-    readonly_fields = ('full_name',)
-    inlines = [DoctorAvailabilityInline]
 
     def get_email(self, obj):
+        """Display doctor's email from linked User"""
         return obj.user.email if obj.user else '-'
     get_email.short_description = 'Email'
+    get_email.admin_order_field = 'user__email'  # Allows sorting by email
 
-# ====================== DOCTOR AVAILABILITY ADMIN ======================
+
+# ====================== DOCTOR AVAILABILITY ADMIN (WITH ADVANCED BOOKED STATUS) ======================
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ('doctor', 'start_time', 'end_time', 'is_recurring', 'booked_status_display')
-    list_filter = ('is_recurring', 'start_time', 'doctor')
+    list_display = (
+        'doctor',
+        'is_recurring',
+        'recurrence_day_of_week',
+        'start_time_of_day',
+        'end_time_of_day',
+        'specific_date',
+        'booked_status_display',
+    )
+    list_filter = ('is_recurring', 'recurrence_day_of_week', 'doctor')
     search_fields = ('doctor__full_name', 'doctor__user__email')
-    readonly_fields = ('end_time',)
-    date_hierarchy = 'start_time'
-    ordering = ('-start_time',)
+    date_hierarchy = 'specific_date'
+    ordering = ('-specific_date', 'recurrence_day_of_week', 'start_time_of_day')
 
     def booked_status_display(self, obj):
-        booked = Appointment.objects.filter(
-            doctor=obj.doctor,
-            start_time__lt=obj.end_time,
-            end_time__gt=obj.start_time,
-        ).exists()
-        color = "red" if booked else "green"
-        status = "Booked" if booked else "Available"
-        return format_html(
-            '<span style="color:{}; font-weight:bold;">● {}</span>',
-            color,
-            status
-        )
-    booked_status_display.short_description = "Status"
+        """
+        Advanced booked status for blocks:
+        - One-time: simple existence check
+        - Recurring: checks bookings on first/most recent occurrence day
+        Returns: "All Available", "Fully Booked", or "Partially Booked (X/Y)"
+        """
+        if not obj.is_recurring:
+            # One-time block
+            if not obj.start_time or not obj.end_time:
+                return "Invalid (missing times)"
+            booked = Appointment.objects.filter(
+                doctor=obj.doctor,
+                start_time__gte=obj.start_time,
+                start_time__lt=obj.end_time,
+                status__in=['UPCOMING', 'ONGOING']
+            ).exists()
+            return "Booked" if booked else "Available"
 
-# ====================== APPOINTMENT ADMIN WITH STATUS FILTER ======================
+        # Recurring block: find nearest occurrence date
+        today = timezone.now().date()
+        occurrence_date = obj.recurrence_end_date or today
+        
+        # Move forward or backward to find matching weekday
+        direction = 1 if occurrence_date >= today else -1
+        while occurrence_date.weekday() != obj.recurrence_day_of_week:
+            occurrence_date += timedelta(days=direction)
+
+        # Build datetime range for that day
+        block_start = datetime.combine(occurrence_date, obj.start_time_of_day, tzinfo=timezone.get_current_timezone())
+        block_end = datetime.combine(occurrence_date, obj.end_time_of_day, tzinfo=timezone.get_current_timezone())
+
+        # Calculate total possible 30-min slots
+        total_seconds = (block_end - block_start).total_seconds()
+        total_slots = int(total_seconds / 1800)  # 30 minutes = 1800 seconds
+
+        # Count booked (UPCOMING or ONGOING) slots in this block
+        booked_count = Appointment.objects.filter(
+            doctor=obj.doctor,
+            start_time__gte=block_start,
+            start_time__lt=block_end,
+            status__in=['UPCOMING', 'ONGOING']
+        ).count()
+
+        if booked_count == 0:
+            return "All Available"
+        elif booked_count == total_slots:
+            return "Fully Booked"
+        else:
+            return f"Partially Booked ({booked_count}/{total_slots})"
+
+    booked_status_display.short_description = "Booked Status"
+
+
+# ====================== APPOINTMENT ADMIN ======================
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
     list_display = (
@@ -137,7 +180,7 @@ class AppointmentAdmin(admin.ModelAdmin):
     list_filter = (
         'encounter_mode',
         'payment_completed',
-        'status',  # ← THIS IS THE NEW FILTER YOU WANTED!
+        'status',
         'start_time',
         'doctor',
     )
@@ -159,7 +202,6 @@ class AppointmentAdmin(admin.ModelAdmin):
             'UPCOMING': '#1976d2',   # blue
             'ONGOING': '#ff9800',     # orange
             'COMPLETED': '#4caf50',   # green
-            'EXPIRED': '#f44336',     # red
             'CANCELLED': '#9e9e9e',   # gray
         }
         color = colors.get(obj.status, '#757575')
@@ -170,6 +212,7 @@ class AppointmentAdmin(admin.ModelAdmin):
         )
     status_colored.short_description = "Status"
     status_colored.admin_order_field = 'status'
+
 
 # ====================== AI CHAT MESSAGE ADMIN ======================
 @admin.register(AIChatMessage)
@@ -201,21 +244,25 @@ class AIChatMessageAdmin(admin.ModelAdmin):
         return text
     short_text.short_description = "Message"
 
-# ====================== OTHER ADMINS ======================
+
+# ====================== OTHER SIMPLE ADMINS ======================
 @admin.register(Specialty)
 class SpecialtyAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
 
 @admin.register(Insuarance)
 class InsuaranceAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
+
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ('name', 'type')
     search_fields = ('name', 'type')
+
 
 @admin.register(OrganizationClinic)
 class OrganizationClinicAdmin(admin.ModelAdmin):
@@ -223,11 +270,13 @@ class OrganizationClinicAdmin(admin.ModelAdmin):
     search_fields = ('name', 'organization__name')
     raw_id_fields = ('organization',)
 
+
 @admin.register(PatientDoctorBookmark)
 class PatientDoctorBookmarkAdmin(admin.ModelAdmin):
     list_display = ('patient', 'doctor', 'created_at')
     list_filter = ('created_at',)
     raw_id_fields = ('patient', 'doctor')
+
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -237,11 +286,13 @@ class NotificationAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     raw_id_fields = ('patient',)
 
+
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
     search_fields = ('name', 'code')
     ordering = ('name',)
+
 
 @admin.register(County)
 class CountyAdmin(admin.ModelAdmin):
