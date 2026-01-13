@@ -21,7 +21,7 @@ const DashbordChatButton = () => {
           How are you feeling today?
         </Text>
       </View>
-      <View className="bg-teal-600 rounded-full shadow-2xl flex-row items-center p-5">
+      <View className="bg-primary rounded-full shadow-2xl flex-row items-center p-5">
         <Ionicons name="chatbubble-ellipses" size={32} color="white" />
       </View>
     </TouchableOpacity>
