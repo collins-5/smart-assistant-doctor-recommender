@@ -1,0 +1,17 @@
+mutation GoogleSignIn($idTokenStr: String!) {
+  googleSignIn(idTokenStr: $idTokenStr) {
+    success
+    token
+    error
+    user {
+      id
+      username
+      email
+      firstName
+      lastName
+      phoneNumber
+      isActive
+      # Add any other fields you need from UserType
+    }
+  }
+}

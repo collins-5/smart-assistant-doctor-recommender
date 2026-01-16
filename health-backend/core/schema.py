@@ -12,6 +12,10 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 import uuid
 from graphene_file_upload.scalars import Upload
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from django.conf import settings
+from django.contrib.auth import login
 
 # Import channels only if available (for notifications)
 try:
@@ -364,6 +368,79 @@ class SignUp(graphene.Mutation):
         user.save()
         token = get_token(user)
         return SignUp(success=True, error=None, jwt_token=token, user=user)
+
+class GoogleSignIn(graphene.Mutation):
+    class Arguments:
+        id_token_str = graphene.String(
+            required=True,
+            description="Google ID Token from frontend (google.accounts.id)"
+        )
+
+    success = graphene.Boolean()
+    error = graphene.String()
+    token = graphene.String()           # JWT token
+    user = graphene.Field(UserType)
+
+    @staticmethod
+    def mutate(root, info, id_token_str):
+        try:
+            # Verify the Google ID token
+            id_info = id_token.verify_oauth2_token(
+                id_token_str,
+                google_requests.Request(),
+                audience=settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+            )
+
+            if id_info['aud'] != settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+                raise ValueError("Invalid token audience")
+
+            email = id_info['email']
+            first_name = id_info.get('given_name', '')
+            last_name = id_info.get('family_name', '')
+
+            # Get or create user
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email.split('@')[0] + str(uuid.uuid4())[:8],  # safe unique username
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'is_active': True,
+                }
+            )
+
+            # Update name if user already existed
+            if not created:
+                updated = False
+                if user.first_name != first_name:
+                    user.first_name = first_name
+                    updated = True
+                if user.last_name != last_name:
+                    user.last_name = last_name
+                    updated = True
+                if updated:
+                    user.save(update_fields=['first_name', 'last_name'])
+
+            # Important: set backend explicitly to avoid "multiple backends" error
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+            # Log the user in (creates session if needed)
+            login(info.context, user)
+
+            # Generate our JWT token
+            jwt_token = get_token(user)
+
+            return GoogleSignIn(
+                success=True,
+                token=jwt_token,
+                user=user,
+                error=None
+            )
+
+        except ValueError as ve:
+            return GoogleSignIn(success=False, error=f"Invalid Google token: {str(ve)}")
+        except Exception as e:
+            return GoogleSignIn(success=False, error=str(e))
 
 
 class CreatePatientProfile(graphene.Mutation):
@@ -1063,6 +1140,7 @@ class Mutation(graphene.ObjectType):
     refresh_token = graphql_jwt.Refresh.Field()
     sign_in = SignIn.Field()
     sign_up = SignUp.Field()
+    google_sign_in = GoogleSignIn.Field()
     create_patient_profile = CreatePatientProfile.Field()
     edit_profile = EditProfile.Field()
     book_appointment = BookAppointment.Field()

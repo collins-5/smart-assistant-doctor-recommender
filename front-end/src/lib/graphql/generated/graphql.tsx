@@ -272,6 +272,14 @@ export type EditProfileInput = {
   phoneNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type GoogleSignIn = {
+  __typename?: 'GoogleSignIn';
+  error?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+  token?: Maybe<Scalars['String']['output']>;
+  user?: Maybe<UserType>;
+};
+
 export type InsuaranceType = {
   __typename?: 'InsuaranceType';
   id: Scalars['ID']['output'];
@@ -291,6 +299,7 @@ export type Mutation = {
   createPatientProfile?: Maybe<CreatePatientProfile>;
   deleteDoctorAvailability?: Maybe<DeleteDoctorAvailability>;
   editProfile?: Maybe<EditProfile>;
+  googleSignIn?: Maybe<GoogleSignIn>;
   refreshToken?: Maybe<Refresh>;
   removeProfilePicture?: Maybe<RemoveProfilePicture>;
   sendAiChatMessage?: Maybe<SendAiChatMessage>;
@@ -338,6 +347,11 @@ export type MutationDeleteDoctorAvailabilityArgs = {
 
 export type MutationEditProfileArgs = {
   input: EditProfileInput;
+};
+
+
+export type MutationGoogleSignInArgs = {
+  idTokenStr: Scalars['String']['input'];
 };
 
 
@@ -588,6 +602,13 @@ export type EditProfileMutationVariables = Exact<{
 
 
 export type EditProfileMutation = { __typename?: 'Mutation', editProfile?: { __typename?: 'EditProfile', success?: boolean | null, error?: string | null, user?: { __typename?: 'UserType', id: string, email?: string | null, phoneNumber?: string | null, firstName: string, lastName: string } | null, patient?: { __typename?: 'PatientType', id: string, firstName: string, lastName: string, middleName: string, dateOfBirth?: any | null, gender: string, profilePictureUrl?: string | null, country?: { __typename?: 'CountryType', id: string, name: string } | null, county?: { __typename?: 'CountyType', id: string, name: string } | null } | null } | null };
+
+export type GoogleSignInMutationVariables = Exact<{
+  idTokenStr: Scalars['String']['input'];
+}>;
+
+
+export type GoogleSignInMutation = { __typename?: 'Mutation', googleSignIn?: { __typename?: 'GoogleSignIn', success?: boolean | null, token?: string | null, error?: string | null, user?: { __typename?: 'UserType', id: string, username: string, email?: string | null, firstName: string, lastName: string, phoneNumber?: string | null, isActive: boolean } | null } | null };
 
 export type RemoveProfilePictureMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -898,6 +919,50 @@ export function useEditProfileMutation(baseOptions?: Apollo.MutationHookOptions<
 export type EditProfileMutationHookResult = ReturnType<typeof useEditProfileMutation>;
 export type EditProfileMutationResult = Apollo.MutationResult<EditProfileMutation>;
 export type EditProfileMutationOptions = Apollo.BaseMutationOptions<EditProfileMutation, EditProfileMutationVariables>;
+export const GoogleSignInDocument = gql`
+    mutation GoogleSignIn($idTokenStr: String!) {
+  googleSignIn(idTokenStr: $idTokenStr) {
+    success
+    token
+    error
+    user {
+      id
+      username
+      email
+      firstName
+      lastName
+      phoneNumber
+      isActive
+    }
+  }
+}
+    `;
+export type GoogleSignInMutationFn = Apollo.MutationFunction<GoogleSignInMutation, GoogleSignInMutationVariables>;
+
+/**
+ * __useGoogleSignInMutation__
+ *
+ * To run a mutation, you first call `useGoogleSignInMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGoogleSignInMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [googleSignInMutation, { data, loading, error }] = useGoogleSignInMutation({
+ *   variables: {
+ *      idTokenStr: // value for 'idTokenStr'
+ *   },
+ * });
+ */
+export function useGoogleSignInMutation(baseOptions?: Apollo.MutationHookOptions<GoogleSignInMutation, GoogleSignInMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<GoogleSignInMutation, GoogleSignInMutationVariables>(GoogleSignInDocument, options);
+      }
+export type GoogleSignInMutationHookResult = ReturnType<typeof useGoogleSignInMutation>;
+export type GoogleSignInMutationResult = Apollo.MutationResult<GoogleSignInMutation>;
+export type GoogleSignInMutationOptions = Apollo.BaseMutationOptions<GoogleSignInMutation, GoogleSignInMutationVariables>;
 export const RemoveProfilePictureDocument = gql`
     mutation RemoveProfilePicture {
   removeProfilePicture {
