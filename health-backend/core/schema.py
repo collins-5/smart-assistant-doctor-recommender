@@ -227,7 +227,29 @@ class AppointmentType(DjangoObjectType):
         fields = "__all__"
 
     def resolve_status_display(self, info):
-        return self.get_status_display()
+        from django.utils import timezone
+        now = timezone.now()
+
+        if self.status == "CANCELLED":
+            return self.get_status_display()
+
+        if self.start_time <= now <= self.end_time:
+            if self.status != "ONGOING":
+                self.status = "ONGOING"
+                self.save(update_fields=["status"])
+            return "Ongoing"
+        elif now > self.end_time:
+            if self.status != "COMPLETED":
+                self.status = "COMPLETED"
+                self.save(update_fields=["status"])
+            return "Completed"
+        else:
+            if self.status != "UPCOMING":
+                self.status = "UPCOMING"
+                self.save(update_fields=["status"])
+            return "Upcoming"
+
+
 
 
 class SpecialtyType(DjangoObjectType):
