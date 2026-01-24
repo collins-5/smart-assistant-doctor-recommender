@@ -22,7 +22,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment }) => {
 
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Live countdown with seconds for ONGOING appointments
   useEffect(() => {
     if (status !== "ONGOING") {
       setTimeLeft("");

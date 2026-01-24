@@ -1,4 +1,3 @@
-// ~/lib/graphql/apolloClient.ts
 import { ApolloClient, InMemoryCache, HttpLink, from, split } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
@@ -18,14 +17,6 @@ const httpLink = new HttpLink({
 const authLink = setContext((_, { headers }) => {
   // This runs on EVERY request — gets latest token
   const token = useSessionStore.getState().session?.jwt;
-
-  console.log('authLink: Sending token →', token ? 'YES' : 'NO');
-  console.log('🌐 GRAPHQL ENDPOINT:', `${BACKEND_URL}/graphql/`);
-  console.log('🔑 FULL TOKEN BEING SENT:', token); // Log the FULL token
-  console.log('📤 HEADERS:', {
-    ...headers,
-    Authorization: token ? `Bearer ${token}` : '',
-  });
 
   return {
     headers: {

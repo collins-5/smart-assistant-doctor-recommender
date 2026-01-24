@@ -1,5 +1,3 @@
-// app/_layout.tsx
-
 import "../../global.css";
 import "~/components/ui/bottom-sheets";
 
@@ -18,18 +16,6 @@ import { useOnboardingStore } from "~/lib/store/onboarding";
 import { useSessionStore } from "~/lib/store/auth";
 import { DoctorsFilterProvider } from "~/lib/context/DoctorsFilterContext";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
-
-
-useEffect(() => {
-  GoogleSignin.configure({
-    webClientId: Constants.expoConfig?.extra?.GOOGLE_WEB_CLIENT_ID,
-    // Optional: if you need server auth code / refresh token later
-    // offlineAccess: true,
-    // forceCodeForRefreshToken: true,
-  });
-}, []); // runs only once on mount
-
-
 
 // This component controls navigation based on auth state
 const AuthNavigator = () => {

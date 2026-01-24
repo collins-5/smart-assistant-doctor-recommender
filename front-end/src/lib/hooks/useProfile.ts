@@ -22,7 +22,6 @@ export const useProfile = () => {
     // THIS IS THE KEY: Force refetch when we navigate with ?refetch=...
     useEffect(() => {
         if (refetchTrigger) {
-            console.log('useProfile: Refetch triggered by navigation param');
             refetch(); // Pull fresh data from server
 
             // Clean URL after 1 second (optional, keeps URL clean)
@@ -33,14 +32,6 @@ export const useProfile = () => {
         }
     }, [refetchTrigger, refetch, router]);
 
-    useEffect(() => {
-        if (data) {
-            console.log('useProfile: SUCCESS →', data.me);
-        }
-        if (error) {
-            console.log('useProfile: ERROR →', error.message);
-        }
-    }, [data, error]);
 
     // Early returns
     if (!jwt) {

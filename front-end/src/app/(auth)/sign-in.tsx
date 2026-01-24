@@ -90,10 +90,10 @@ export default function SignInScreen() {
                   disabled
                 /> */}
 
-                <GoogleSignInButton
+                {/* <GoogleSignInButton
                   onSuccess={handleSuccess}
-                  // onError={(err) => console.log('Custom error:', err)} // optional
-                />
+                /> */}
+                
 
               </View>
               <Separator className="my-6 bg-foreground" text="OR" />
