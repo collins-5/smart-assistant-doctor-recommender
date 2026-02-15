@@ -39,7 +39,7 @@ interface ActionButton {
 }
 
 interface DoctorCardProps {
-  id: number;
+  id: string;
   title?: string | null;
   firstName?: string | null;
   bio?: string | null;

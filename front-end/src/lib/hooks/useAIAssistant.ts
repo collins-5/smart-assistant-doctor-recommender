@@ -1,4 +1,3 @@
-// src/hooks/useAIAssistant.ts
 import { useState, useCallback, useEffect } from "react";
 import { useAIChatMessages, useSendAIChatMessage } from "./useAIChatMessages";
 import { SYSTEM_PROMPT } from "./ai-prompt";
@@ -31,7 +30,7 @@ export const useAIAssistant = () => {
     const { messages: backendMessages, loading: loadingHistory, refetch } = useAIChatMessages();
     const { sendMessage: saveMessageToBackend } = useSendAIChatMessage();
 
-    // Sync backend messages → local messages when data changes
+    // Sync backend messages → local messages
     useEffect(() => {
         if (backendMessages.length > 0) {
             const formatted = backendMessages.map((msg: any) => ({
@@ -98,16 +97,16 @@ export const useAIAssistant = () => {
                 // === TOOL INTERCEPTION ===
                 let processedText = botText;
                 if (processedText.includes("[TOOL:SHOW_DOCTORS]")) {
-                    processedText = processedText.replace(
+                processedText = processedText.replace(
                         /\[TOOL:SHOW_DOCTORS\](.*?)\[\/TOOL\]/s,
-                        "$1\n\n<DOCTORS_LIST/>"
-                    );
+                    "$1\n\n<DOCTORS_LIST/>"
+                );
                 }
                 if (processedText.includes("[TOOL:SHOW_SPECIALTIES]")) {
-                    processedText = processedText.replace(
+                processedText = processedText.replace(
                         /\[TOOL:SHOW_SPECIALTIES\](.*?)\[\/TOOL\]/s,
-                        "$1\n\n<SPECIALTIES_LIST/>"
-                    );
+                    "$1\n\n<SPECIALTIES_LIST/>"
+                );
                 }
                 // if (processedText.includes("[TOOL:BOOK_APPOINTMENT]")) {
                 //     processedText = processedText.replace(
@@ -147,8 +146,8 @@ export const useAIAssistant = () => {
         messages,
         inputText,
         setInputText,
-        isLoading,                    
-        loadingHistory,               
+        isLoading,
+        loadingHistory,
         sendMessage,
         refreshChat,
     };

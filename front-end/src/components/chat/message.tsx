@@ -1,14 +1,11 @@
-// src/components/chat/MessageBubble.tsx
-
 import React from "react";
 import { View, Text } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { format, isToday, isYesterday } from "date-fns";
 import { Platform } from "react-native";
-
 import DoctorsCarousel from "./doctors-carousel";
 import SpecialtiesGrid from "./specialties-grid";
-import BookAppointmentButton from "./BookAppointmentButton";
+// import BookAppointmentButton from "./BookAppointmentButton";
 
 interface MessageBubbleProps {
   text: string;
@@ -23,24 +20,42 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const hasDoctors = text.includes("<DOCTORS_LIST/>");
   const hasSpecialties = text.includes("<SPECIALTIES_LIST/>");
-  const hasBookButton = text.includes("<BOOK_APPOINTMENT_BUTTON/>");
-  const hasAnyCard = hasDoctors || hasSpecialties || hasBookButton;
+  // const hasBookButton = text.includes("<BOOK_APPOINTMENT_BUTTON/>");
+  const hasAnyCard = hasDoctors || hasSpecialties; // || hasBookButton;
 
   const cleanText = text
     .replace(/<DOCTORS_LIST\/>/g, "")
     .replace(/<SPECIALTIES_LIST\/>/g, "")
-    .replace(/<BOOK_APPOINTMENT_BUTTON\/>/g, "")
+    // .replace(/<BOOK_APPOINTMENT_BUTTON\/>/g, "")
     .trim();
 
-  // Format timestamp based on date
-  const formatTimestamp = () => {
-    if (isToday(createdAt)) {
-      return format(createdAt, "h:mm a");
-    } else if (isYesterday(createdAt)) {
-      return format(createdAt, "'Yesterday', h:mm a");
-    } else {
-      return format(createdAt, "dd MMM, h:mm a");
+  // ────────────────────────────────────────────────
+  // Extract suggested specialty name from AI text
+  // ────────────────────────────────────────────────
+  const extractSuggestedSpecialty = (msgText: string): string | null => {
+    const patterns = [
+      /see (?:a|an) (General Practitioner|Ent|physiotherapy|neurosergion)/i,
+      /recommend (?:a|an) (General Practitioner|Ent|physiotherapy|neurosergion)/i,
+      /(General Practitioner|Ent|physiotherapy|neurosergion) specialist/i,
+      /best seen by (?:a|an) (General Practitioner|Ent|physiotherapy|neurosergion)/i,
+      /\b(General Practitioner|Ent|physiotherapy|neurosergion)\b/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = msgText.match(pattern);
+      if (match?.[1]) {
+        return match[1].trim();
+      }
     }
+    return null;
+  };
+
+  const suggestedSpecialty = hasDoctors ? extractSuggestedSpecialty(text) : null;
+
+  const formatTimestamp = () => {
+    if (isToday(createdAt)) return format(createdAt, "h:mm a");
+    if (isYesterday(createdAt)) return format(createdAt, "'Yesterday', h:mm a");
+    return format(createdAt, "dd MMM, h:mm a");
   };
 
   return (
@@ -87,7 +102,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {hasDoctors && (
           <View className="mt-4">
-            <DoctorsCarousel />
+            <DoctorsCarousel specialtyName={suggestedSpecialty} />
           </View>
         )}
 
@@ -97,11 +112,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         )}
 
-        {hasBookButton && (
+        {/* {hasBookButton && (
           <View className="mt-4">
             <BookAppointmentButton />
           </View>
-        )}
+        )} */}
 
         <Text className="text-xs text-gray-500 mt-3 text-right">
           {formatTimestamp()}
