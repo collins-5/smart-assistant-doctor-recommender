@@ -8,7 +8,7 @@ import { Text } from "~/components/ui/text";
 type Insurance = {
   id: string | number;
   name: string;
-  logoUrl: string | null;
+  logoUrl?: string | null;
 };
 
 type InsuranceListProps = {
