@@ -998,23 +998,28 @@ class Query(graphene.ObjectType):
         user = info.context.user
         if not user.is_authenticated or not hasattr(user, "patient"):
             return Appointment.objects.none()
-        
+
         queryset = Appointment.objects.filter(patient=user.patient)
 
         now = timezone.now()
         for appt in queryset:
-            if appt.status in ['UPCOMING', 'ONGOING']:
+            original_status = appt.status
+
+            # Automatically transition UPCOMING/ONGOING based on current time
+            if original_status in ["UPCOMING", "ONGOING"]:
                 if appt.start_time <= now <= appt.end_time:
-                    appt.status = 'ONGOING'
+                    appt.status = "ONGOING"
                 elif now > appt.end_time:
-                    appt.status = 'COMPLETED'
-                if appt.status != appt._state.fields_cache.get('status', appt.status):
-                    appt.save(update_fields=['status'])
+                    appt.status = "COMPLETED"
+
+                # Persist status change so future queries are correct
+                if appt.status != original_status:
+                    appt.save(update_fields=["status"])
 
         if status:
             queryset = queryset.filter(status=status.upper())
 
-        return queryset.order_by('-start_time')
+        return queryset.order_by("-start_time")
 
     @login_required
     def resolve_bookmarked_doctors(self, info):
