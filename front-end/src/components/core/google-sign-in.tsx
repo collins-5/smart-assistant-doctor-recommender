@@ -1,16 +1,7 @@
-// src/components/auth/GoogleSignInButton.tsx
-import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  Alert,
-} from "react-native";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import React, { useEffect } from "react";
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, Alert } from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
 import { useMutation } from "@apollo/client";
 import * as SecureStore from "expo-secure-store";
 
@@ -20,100 +11,68 @@ import {
   GoogleSignInMutationVariables,
 } from "@/lib/graphql/generated/graphql";
 
+WebBrowser.maybeCompleteAuthSession();
+
 interface GoogleSignInButtonProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
   style?: object;
 }
 
-const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
-  onSuccess,
-  onError,
-  style,
-}) => {
-  const [googleSignInMutation, { loading }] = useMutation<
+const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ onSuccess, onError, style }) => {
+  const [googleSignInMutation, { loading: backendLoading }] = useMutation<
     GoogleSignInMutation,
     GoogleSignInMutationVariables
   >(GoogleSignInDocument);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      // 1. Ensure Play Services are available
-      await GoogleSignin.hasPlayServices();
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
 
-      // 2. Trigger native Google Sign-In
-      const userInfo = await GoogleSignin.signIn();
+  useEffect(() => {
+    (async () => {
+      if (response?.type !== "success") return;
 
-      if (!userInfo.idToken) {
-        throw new Error("No ID token received from Google");
+      const idToken = response.params?.id_token;
+      if (!idToken) {
+        const msg = "No ID token received from Google.";
+        Alert.alert("Error", msg);
+        onError?.(msg);
+        return;
       }
 
-      // 3. Send ID token to your backend
-      const { data } = await googleSignInMutation({
-        variables: { idTokenStr: userInfo.idToken },
-      });
+      try {
+        const { data } = await googleSignInMutation({
+          variables: { idTokenStr: idToken },
+        });
 
-      const result = data?.googleSignIn;
-
-      if (!result?.success) {
-        throw new Error(result?.error || "Login failed on server");
-      }
-
-      const { token, user } = result;
-
-      if (!token) {
-        throw new Error("No authentication token received from server");
-      }
-
-      // 4. Store token securely
-      await SecureStore.setItemAsync("jwt_token", token);
-
-      // Optional: store basic user info
-      if (user?.email) {
-        await SecureStore.setItemAsync("user_email", user.email);
-      }
-
-      // Success feedback
-      Alert.alert(
-        "Success",
-        `Welcome${user?.firstName ? `, ${user.firstName}` : ""}!`
-      );
-
-      onSuccess?.();
-    } catch (error: any) {
-      console.error("Google Sign-In failed:", error);
-
-      let message = "Something went wrong during Google Sign-In";
-
-      // Safely check error.code (prevents undefined crash)
-      if (error?.code) {
-        switch (error.code) {
-          case statusCodes.SIGN_IN_CANCELLED:
-            message = "Sign in was cancelled";
-            break;
-          case statusCodes.IN_PROGRESS:
-            message = "Sign in already in progress";
-            break;
-          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            message = "Google Play Services not available on this device";
-            break;
-          default:
-            message = error.message || "Unknown error";
+        const result = data?.googleSignIn;
+        if (!result?.success || !result.token) {
+          throw new Error(result?.error || "Google sign-in failed on server.");
         }
-      } else {
-        message = error.message || message;
-      }
 
-      Alert.alert("Error", message);
-      onError?.(message);
-    }
-  };
+        await SecureStore.setItemAsync("jwt_token", result.token);
+        if (result.user?.email) {
+          await SecureStore.setItemAsync("user_email", result.user.email);
+        }
+
+        Alert.alert("Success", `Welcome${result.user?.firstName ? `, ${result.user.firstName}` : ""}!`);
+        onSuccess?.();
+      } catch (e: any) {
+        const msg = e?.message || "Google sign-in failed.";
+        Alert.alert("Error", msg);
+        onError?.(msg);
+      }
+    })();
+  }, [response, googleSignInMutation, onError, onSuccess]);
+
+  const loading = backendLoading;
 
   return (
     <TouchableOpacity
-      style={[styles.button, loading && styles.buttonDisabled, style]}
-      onPress={handleGoogleSignIn}
-      disabled={loading}
+      style={[styles.button, (loading || !request) && styles.buttonDisabled, style]}
+      onPress={() => promptAsync()}
+      disabled={loading || !request}
       activeOpacity={0.8}
     >
       {loading ? (

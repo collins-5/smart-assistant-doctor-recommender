@@ -15,7 +15,6 @@ import Constants from "expo-constants";
 import { useOnboardingStore } from "~/lib/store/onboarding";
 import { useSessionStore } from "~/lib/store/auth";
 import { DoctorsFilterProvider } from "~/lib/context/DoctorsFilterContext";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 // This component controls navigation based on auth state
 const AuthNavigator = () => {

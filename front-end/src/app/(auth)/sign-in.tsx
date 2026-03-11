@@ -90,9 +90,9 @@ export default function SignInScreen() {
                   disabled
                 /> */}
 
-                {/* <GoogleSignInButton
+                <GoogleSignInButton
                   onSuccess={handleSuccess}
-                /> */}
+                /> 
                 
 
               </View>

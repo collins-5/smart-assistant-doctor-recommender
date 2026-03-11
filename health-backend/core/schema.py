@@ -1,4 +1,5 @@
 # core/schema.py
+import os
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -406,14 +407,18 @@ class GoogleSignIn(graphene.Mutation):
     @staticmethod
     def mutate(root, info, id_token_str):
         try:
+            audience = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY or os.getenv("GOOGLE_OAUTH2_CLIENT_ID")
+            if not audience:
+                raise ValueError("Server Google Client ID not configured (set SOCIAL_AUTH_GOOGLE_OAUTH2_KEY or GOOGLE_OAUTH2_CLIENT_ID)")
+
             # Verify the Google ID token
             id_info = id_token.verify_oauth2_token(
                 id_token_str,
                 google_requests.Request(),
-                audience=settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+                audience=audience
             )
 
-            if id_info['aud'] != settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+            if id_info.get('aud') != audience:
                 raise ValueError("Invalid token audience")
 
             email = id_info['email']
