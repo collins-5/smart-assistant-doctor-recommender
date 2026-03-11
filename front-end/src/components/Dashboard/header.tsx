@@ -1,7 +1,5 @@
-// src/components/Header.tsx
-
 import React, { useState } from "react";
-import { Image, TouchableOpacity} from "react-native";
+import { Image, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import View from "@/components/ui/view";
@@ -10,6 +8,7 @@ import Icon from "../ui/icon";
 import { router } from "expo-router";
 import ProfileDrawer from "../drawer/drawer";
 import { Skeleton } from "../ui/skeleton";
+import { useMyAppointments } from "~/lib/hooks/useMyAppointments";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -18,19 +17,14 @@ const getGreeting = () => {
   return "Evening";
 };
 
-interface HeaderProps {
-  unreadCount?: number;
-}
-
-export default function Header({ unreadCount = 0 }: HeaderProps = {}) {
+export default function Header() {
   const insets = useSafeAreaInsets();
-  const { profile , loading } = useProfile();
+  const { profile, loading } = useProfile();
   const greeting = getGreeting();
-
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const hasProfile = !!profile;
-  const firstName = profile?.firstName;
+  const { appointments } = useMyAppointments("UPCOMING");
+  const upcomingCount = appointments.length;
 
   return (
     <>
@@ -38,13 +32,10 @@ export default function Header({ unreadCount = 0 }: HeaderProps = {}) {
         className="bg-primary px-5 pb-6 relative"
         style={{ paddingTop: 10 }}
       >
-        {/* Gradient overlay */}
         <View className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
 
         <View className="flex-row items-center justify-between">
-          {/* Left: Avatar + Greeting */}
           <View className="flex-row items-center gap-4 flex-1">
-            {/* Clickable Avatar */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setIsDrawerOpen(true)}
@@ -66,14 +57,12 @@ export default function Header({ unreadCount = 0 }: HeaderProps = {}) {
               )}
             </TouchableOpacity>
 
-            {/* Greeting Text */}
             <View className="justify-center flex-1">
               <Text className="text-primary-foreground text-base font-medium">
                 Good {greeting},
               </Text>
-
               {loading ? (
-               <Skeleton className="h-6 w-32 rounded-full mt-1" />
+                <Skeleton className="h-6 w-32 rounded-full mt-1" />
               ) : (
                 <>
                   {profile?.firstName ? (
@@ -97,19 +86,18 @@ export default function Header({ unreadCount = 0 }: HeaderProps = {}) {
             </View>
           </View>
 
-          {/* Right: Notifications */}
           <View className="flex-row items-center gap-4">
             <TouchableOpacity
               activeOpacity={0.7}
               className="p-3 bg-white/20 rounded-full backdrop-blur-md shadow-lg border border-white/10 relative"
-              onPress={() => router.push("/notifications")}
+              onPress={() => router.push("/(protected)/(tabs)/appointments")}
             >
-              <Icon name="bell" size={24} color="white" />
+              <Icon name="calendar" size={24} color="white" />
 
-              {unreadCount > 0 && (
+              {upcomingCount > 0 && (
                 <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-6 h-6 justify-center items-center shadow-md">
                   <Text className="text-white text-xs font-bold">
-                    {unreadCount > 99 ? "99+" : unreadCount}
+                    {upcomingCount > 99 ? "99+" : upcomingCount}
                   </Text>
                 </View>
               )}
@@ -118,7 +106,6 @@ export default function Header({ unreadCount = 0 }: HeaderProps = {}) {
         </View>
       </View>
 
-      {/* Profile Drawer */}
       <ProfileDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
