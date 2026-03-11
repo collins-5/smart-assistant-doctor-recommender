@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -70,15 +70,25 @@ const Slide: React.FC<SlideProps> = ({ title, description, imageUrl }) => {
     </View>
   );
 };
-
 const PaginationDots: React.FC<{
   total: number;
   current: number;
   onNext: () => void;
 }> = ({ total, current, onNext }) => {
-  const isLastSlide = current >= 4;
+  const isLastSlide = current >= total - 1;
   const { setIsOnboarded } = useOnboardingStore();
   const insets = useSafeAreaInsets();
+  const router = useRouter(); 
+
+  const handleGetStarted = () => {
+    setIsOnboarded(); 
+    router.replace("/(auth)/sign-in"); 
+  };
+
+  const handleSkip = () => {
+    setIsOnboarded(); 
+    router.replace("/(auth)/sign-in"); 
+  };
 
   return (
     <View
@@ -89,50 +99,45 @@ const PaginationDots: React.FC<{
         paddingBottom: insets.bottom + EXTRA_BOTTOM_SPACING,
       }}
     >
+      {/* Skip */}
       <View className="flex-1 max-w-[150px] min-w-[100px] items-start">
-        <Link
-          href={"/(auth)/sign-in"}
-          onPress={setIsOnboarded}
-          replace
-          className="px-4 py-2"
-        >
+        <Pressable onPress={handleSkip} className="px-4 py-2">
           <Text
             className="text-base font-medium text-primary-foreground text-center"
             style={{ fontSize: scaleFont(12) }}
           >
             Skip
           </Text>
-        </Link>
+        </Pressable>
       </View>
 
+      {/* Dots */}
       <View className="flex-row justify-center">
         {Array.from({ length: total }, (_, index) => (
           <View
             key={index}
-            className={`mx-1 w-2 h-2 rounded-full ${index === current ? "bg-primary-foreground" : "bg-muted/50"}`}
+            className={`mx-1 w-2 h-2 rounded-full ${
+              index === current ? "bg-primary-foreground" : "bg-muted/50"
+            }`}
           />
         ))}
       </View>
 
+      {/* Next / Get Started */}
       <View className="flex-1 max-w-[150px] min-w-[100px] items-end">
         {isLastSlide ? (
-          <Link
-            href={"/(auth)/sign-in"}
-            replace
-            className="px-4 py-2"
-            onPress={setIsOnboarded}
-          >
+          <Pressable onPress={handleGetStarted} className="px-4 py-2">
             <Text
               className="text-base font-medium text-primary-foreground text-center"
               style={{ fontSize: scaleFont(12) }}
             >
               Get Started
             </Text>
-          </Link>
+          </Pressable>
         ) : (
           <Pressable className="px-4 py-2" onPress={onNext}>
             <Text
-              className="font-medium  text-primary-foreground text-center"
+              className="font-medium text-primary-foreground text-center"
               style={{ fontSize: scaleFont(12) }}
             >
               Next
