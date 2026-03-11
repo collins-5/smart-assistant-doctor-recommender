@@ -14,6 +14,20 @@ export default function OnboardingIndex() {
           resizeMode="cover"
           source={require("assets/splash-icon.png")}
         />
+        <View className="absolute inset-0 items-center justify-center">
+          <Image
+            source={require("assets/sdr-logo.jpg")}
+            className="w-24 h-24 rounded-2xl border-2 border-white/30"
+            resizeMode="contain"
+          />
+          <Text className="font-bold text-2xl text-white mt-4 tracking-wide">
+            SDR Health
+          </Text>
+          <Text className="text-white/70 text-xs mt-1 tracking-widest uppercase">
+            Your Smart Doctor Assistant
+          </Text>
+        </View>
+
         <View className="absolute bottom-5 self-center">
           <Text className="font-bold text-xl italic text-primary-foreground">
             powered by Android

@@ -1,33 +1,28 @@
-// src/app/(auth)/sign-up.tsx
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Image
+} from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Separator } from "~/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "~/components/ui/card";
-import HeaderSafeAreaView from "~/components/core/header-safe-area-view";
 import KeyboardAvoidingWrapper from "~/components/core/keyboard-avoiding-wrapper";
 import { useSignUp } from "~/lib/hooks/useSignUp";
 import { signUpSchema, SignUpForm } from "~/lib/schemas/auth";
 
+const { height } = Dimensions.get("window");
+
 export default function SignUpScreen() {
   const router = useRouter();
   const {
-    username,
     setUsername,
-    email,
     setEmail,
-    phoneNumber,
     setPhoneNumber,
-    password,
     setPassword,
     submit,
     loading,
@@ -53,197 +48,229 @@ export default function SignUpScreen() {
     try {
       await submit();
       router.replace("/(onboarding)/create-profile");
-    } catch (err: any) {
-      // Error already in hook state
-    }
+    } catch (err: any) {}
   };
 
   return (
-    <>
-      <HeaderSafeAreaView />
-      <KeyboardAvoidingWrapper>
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-4"
-          showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingWrapper>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        className="flex-1 bg-background"
+      >
+        {/* Hero Header */}
+        <View
+          className="bg-primary items-center justify-end"
+          style={{ height: height * 0.22, paddingBottom: 28 }}
         >
-          <View className="flex-1 justify-center">
-            <Card className="bg-card rounded-2xl shadow-md">
-              <CardHeader className="items-center pb-4">
-                <CardTitle className="py-8">
-                  <Text className="text-center text-primary font-extrabold text-3xl">
-                    Create Account
-                  </Text>
-                </CardTitle>
-              </CardHeader>
+          {/* Decorative circles */}
+          <View
+            className="absolute bg-white/10 rounded-full"
+            style={{ width: 200, height: 200, top: -60, right: -40 }}
+          />
+          <View
+            className="absolute bg-white/5 rounded-full"
+            style={{ width: 140, height: 140, top: 10, left: -30 }}
+          />
 
-              <CardContent className="space-y-6">
-                <View className="flex-row justify-center space-x-3">
-                  <Button
-                    text="Google"
-                    variant="outline"
-                    size="default"
-                    className="flex-1 text-center"
-                    disabled
-                  />
-                </View>
-
-                <Separator className="my-6 bg-foreground" text="OR" />
-
-                <View className="my-2">
-                  {/* Username */}
-                  <Controller
-                    control={control}
-                    name="username"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        placeholder="Username"
-                        value={value}
-                        onChangeText={(t) => {
-                          onChange(t);
-                          setUsername(t);
-                        }}
-                        error={errors.username?.message}
-                        autoCapitalize="none"
-                        iconProps={{
-                          name: "account-outline",
-                          size: 20,
-                          className: "text-foreground",
-                        }}
-                      />
-                    )}
-                  />
-                </View>
-
-                <View className="my-2">
-                  {/* Email */}
-                  <Controller
-                    control={control}
-                    name="email"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        placeholder="Email Address"
-                        value={value}
-                        onChangeText={(t) => {
-                          onChange(t);
-                          setEmail(t);
-                        }}
-                        error={errors.email?.message}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        iconProps={{
-                          name: "email-outline",
-                          size: 20,
-                          className: "text-foreground",
-                        }}
-                      />
-                    )}
-                  />
-                </View>
-
-                <View className="my-2">
-                  {/* Phone Number */}
-                  <Controller
-                    control={control}
-                    name="phoneNumber"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        placeholder="Phone Number"
-                        value={value}
-                        onChangeText={(t) => {
-                          onChange(t);
-                          setPhoneNumber(t);
-                        }}
-                        error={errors.phoneNumber?.message}
-                        keyboardType="phone-pad"
-                        iconProps={{
-                          name: "phone-outline",
-                          size: 20,
-                          className: "text-foreground",
-                        }}
-                      />
-                    )}
-                  />
-                </View>
-
-                <View className="my-2">
-                  {/* Password */}
-                  <Controller
-                    control={control}
-                    name="password"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        placeholder="Password"
-                        value={value}
-                        onChangeText={(t) => {
-                          onChange(t);
-                          setPassword(t);
-                        }}
-                        error={errors.password?.message}
-                        secureTextEntry
-                        iconProps={{
-                          name: "lock-outline",
-                          size: 20,
-                          className: "text-foreground",
-                        }}
-                      />
-                    )}
-                  />
-                </View>
-                
-                <View className="my-2">
-                  {/* Confirm Password */}
-                  <Controller
-                    control={control}
-                    name="confirmPassword"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        placeholder="Confirm Password"
-                        value={value}
-                        onChangeText={onChange}
-                        error={errors.confirmPassword?.message}
-                        secureTextEntry
-                        iconProps={{
-                          name: "lock-outline",
-                          size: 20,
-                          className: "text-foreground",
-                        }}
-                      />
-                    )}
-                  />
-                </View>
-
-                <Button
-                  text={loading ? "Creating Account..." : "Continue"}
-                  variant="default"
-                  size="lg"
-                  className="rounded-lg"
-                  onPress={handleSubmit(onSubmit)}
-                  disabled={loading}
-                />
-
-                {error && (
-                  <Text className="text-red-500 text-center font-medium">
-                    {error}
-                  </Text>
-                )}
-
-                <View className="flex-row justify-center mt-6">
-                  <Text className="text-muted-foreground">
-                    Already have an account?{" "}
-                  </Text>
-                  <Link href="/(auth)/sign-in" asChild>
-                    <TouchableOpacity>
-                      <Text className="text-primary font-semibold">
-                        Sign In
-                      </Text>
-                    </TouchableOpacity>
-                  </Link>
-                </View>
-              </CardContent>
-            </Card>
+          <View className="items-center mb-2">
+            <Image
+              source={require("assets/sdr-logo.jpg")}
+              className="w-20 h-20 rounded-2xl border-2 border-white/30"
+              resizeMode="contain"
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingWrapper>
-    </>
+          <Text className="text-primary-foreground text-2xl font-bold tracking-wide">
+            SDR Health
+          </Text>
+          <Text className="text-muted text-sm mt-1 tracking-widest uppercase">
+            Your Smart Doctor Assistant
+          </Text>
+        </View>
+
+        {/* Form — slides up over hero */}
+        <View
+          className="bg-background rounded-t-3xl px-6 pb-10"
+          style={{ marginTop: -24 }}
+        >
+          {/* Title */}
+          <View className="pt-8 pb-6">
+            <Text className="text-foreground text-2xl font-bold">
+              Create your account ✨
+            </Text>
+            <Text className="text-muted-foreground text-sm mt-1">
+              Join thousands getting smarter healthcare
+            </Text>
+          </View>
+
+          <View className="gap-4">
+            {/* Username */}
+            <Controller
+              control={control}
+              name="username"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder="Username"
+                  value={value}
+                  onChangeText={(t) => {
+                    onChange(t);
+                    setUsername(t);
+                  }}
+                  error={errors.username?.message}
+                  autoCapitalize="none"
+                  className="rounded-xl"
+                  iconProps={{
+                    name: "account-outline",
+                    size: 20,
+                    className: "text-muted-foreground",
+                  }}
+                />
+              )}
+            />
+
+            {/* Email */}
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder="Email Address"
+                  value={value}
+                  onChangeText={(t) => {
+                    onChange(t);
+                    setEmail(t);
+                  }}
+                  error={errors.email?.message}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  className="rounded-xl"
+                  iconProps={{
+                    name: "email-outline",
+                    size: 20,
+                    className: "text-muted-foreground",
+                  }}
+                />
+              )}
+            />
+
+            {/* Phone */}
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder="Phone Number"
+                  value={value}
+                  onChangeText={(t) => {
+                    onChange(t);
+                    setPhoneNumber(t);
+                  }}
+                  error={errors.phoneNumber?.message}
+                  keyboardType="phone-pad"
+                  className="rounded-xl"
+                  iconProps={{
+                    name: "phone-outline",
+                    size: 20,
+                    className: "text-muted-foreground",
+                  }}
+                />
+              )}
+            />
+
+            {/* Password */}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder="Password"
+                  value={value}
+                  onChangeText={(t) => {
+                    onChange(t);
+                    setPassword(t);
+                  }}
+                  error={errors.password?.message}
+                  secureTextEntry
+                  className="rounded-xl"
+                  iconProps={{
+                    name: "lock-outline",
+                    size: 20,
+                    className: "text-muted-foreground",
+                  }}
+                />
+              )}
+            />
+
+            {/* Confirm Password */}
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder="Confirm Password"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.confirmPassword?.message}
+                  secureTextEntry
+                  className="rounded-xl"
+                  iconProps={{
+                    name: "lock-outline",
+                    size: 20,
+                    className: "text-muted-foreground",
+                  }}
+                />
+              )}
+            />
+          </View>
+
+          {/* Error banner */}
+          {error && (
+            <View className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <Text className="text-red-600 text-sm text-center">{error}</Text>
+            </View>
+          )}
+
+          {/* Submit */}
+          <View className="mt-6">
+            <Button
+              text={loading ? "Creating Account..." : "Create Account"}
+              variant="default"
+              size="lg"
+              className="rounded-xl"
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
+            />
+          </View>
+
+          {/* Divider */}
+          <View className="flex-row items-center my-6 gap-3">
+            <View className="flex-1 h-px bg-border" />
+            <Text className="text-muted-foreground text-xs uppercase tracking-widest">
+              Have an account?
+            </Text>
+            <View className="flex-1 h-px bg-border" />
+          </View>
+
+          {/* Sign in */}
+          <Link href="/(auth)/sign-in" asChild>
+            <TouchableOpacity
+              className="border border-primary rounded-xl py-4 items-center"
+              activeOpacity={0.8}
+            >
+              <Text className="text-primary font-semibold text-base">
+                Sign In Instead
+              </Text>
+            </TouchableOpacity>
+          </Link>
+
+          {/* Terms note */}
+          <Text className="text-muted-foreground text-xs text-center mt-6 leading-relaxed">
+            By creating an account you agree to our{" "}
+            <Text className="text-primary underline">Terms of Service</Text> and{" "}
+            <Text className="text-primary underline">Privacy Policy</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingWrapper>
   );
 }
