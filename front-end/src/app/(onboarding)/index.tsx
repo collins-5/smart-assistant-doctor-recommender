@@ -29,9 +29,7 @@ export default function OnboardingIndex() {
         </View>
 
         <View className="absolute bottom-5 self-center">
-          <Text className="font-bold text-xl italic text-primary-foreground">
-            powered by Android
-          </Text>
+          
         </View>
       </View>
     );
