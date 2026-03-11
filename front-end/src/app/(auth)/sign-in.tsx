@@ -74,7 +74,7 @@ export default function SignInScreen() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <View className="flex-row justify-center space-x-3">
+              {/* <View className="flex-row justify-center space-x-3">
                 <Button
                   text="Google"
                   variant="outline"
@@ -83,7 +83,7 @@ export default function SignInScreen() {
                   disabled
                 />
               </View>
-              <Separator className="my-6 bg-foreground" text="OR" />
+              <Separator className="my-6 bg-foreground" text="OR" /> */}
 
               <View className="my-2">
                 {/* Email/Phone */}
