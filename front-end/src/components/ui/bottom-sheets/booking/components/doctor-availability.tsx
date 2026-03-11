@@ -13,6 +13,9 @@ import { FlashList } from "@shopify/flash-list";
 
 // Use the correct new hook
 import { useDoctor } from "~/lib/hooks/useDoctor";
+import { ScrollView } from "react-native-actions-sheet";
+import SlotSkeletonGrid from "~/components/skeletons/slot-skeleton";
+import Slot from "./slot";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 48 - 16) / 3; // 3 columns
@@ -34,7 +37,6 @@ const DoctorAvailability: React.FC<{
     setSelectedDate,
   } = useDoctor(doctorId);
 
-  // Formatting helpers (unchanged)
   const formatTime = (dateString?: string | null) =>
     dateString ? format(new Date(dateString), "hh:mm a") : "";
 
@@ -50,77 +52,16 @@ const DoctorAvailability: React.FC<{
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center py-12">
-        <ActivityIndicator size="large" color="rgb(14, 103, 126)" />
-        <Text className="mt-4 text-muted-foreground">
-          Loading availabilities...
-        </Text>
+      <View className="">
+        <SlotSkeletonGrid />
       </View>
     );
   }
 
-  if (error) {
-    return (
-      <View className="flex-1 justify-center items-center py-12 px-6">
-        <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-        <Text className="mt-4 text-destructive text-center font-semibold">
-          Failed to load availabilities
-        </Text>
-        <Text className="text-sm text-muted-foreground text-center mt-2">
-          {error.message || "Unknown error occurred"}
-        </Text>
-      </View>
-    );
-  }
 
-  // No available slots at all
-  if (slots.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center py-12">
-        <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
-        <Text className="mt-4 text-muted-foreground text-center">
-          No available slots at the moment
-        </Text>
-      </View>
-    );
-  }
-
-  const renderSlotItem = ({ item }: { item: any }) => {
-    const isSelected = selectedSlot?.id === item.id;
-    return (
-      <TouchableOpacity
-        onPress={() => onSelectSlot(item)}
-        className={`m-1 items-center justify-center flex-row rounded-2xl border border-primary p-1 ${
-          isSelected
-            ? "border-primary bg-primary/10"
-            : "border-gray-200 bg-card"
-        }`}
-        style={{ width: ITEM_WIDTH }}
-      >
-        <Ionicons
-          name="time-outline"
-          size={28}
-          color={isSelected ? "rgb(14, 103, 126)" : "#6B7280"}
-        />
-        <View>
-          <Text
-            className={`text-base font-bold mt-2 ${
-              isSelected ? "text-primary" : "text-foreground"
-            }`}
-          >
-            {formatTime(item.startTime)}
-          </Text>
-          <Text
-            className={`text-xs mt-1 ${
-              isSelected ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            to {formatTime(item.endTime)}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderSlotItem = ({ item }: { item: any }) => (
+    <Slot item={item} selectedSlot={selectedSlot} onSelectSlot={onSelectSlot} />
+  );
 
   return (
     <View className="gap-2">
@@ -149,7 +90,6 @@ const DoctorAvailability: React.FC<{
           />
         )}
       </View>
-
       {/* Available Slots Header - same style */}
       {slots.length !== 0 && (
         <View className="bg-card rounded-2xl p-6 border border-gray-200">
@@ -165,7 +105,6 @@ const DoctorAvailability: React.FC<{
           </Text>
         </View>
       )}
-
       {/* Selected Slot Summary - unchanged */}
       {selectedSlot && (
         <View className="bg-primary rounded-2xl p-6 mx-4 shadow-lg">
@@ -185,8 +124,17 @@ const DoctorAvailability: React.FC<{
         </View>
       )}
 
-      {/* 3-Column Grid - same look */}
-      {slots.length === 0 ? (
+      {error ? (
+        <View className="flex-1 justify-center items-center py-12 px-6">
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text className="mt-4 text-destructive text-center font-semibold">
+            Failed to load availabilities
+          </Text>
+          <Text className="text-sm text-muted-foreground text-center mt-2">
+            {error.message || "Unknown error occurred"}
+          </Text>
+        </View>
+      ) : slots.length === 0 ? (
         <View className="bg-card rounded-2xl p-8 border border-gray-200 items-center">
           <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
           <Text className="mt-4 text-muted-foreground text-center">
@@ -197,7 +145,7 @@ const DoctorAvailability: React.FC<{
           </Text>
         </View>
       ) : (
-        <View className="px-1">
+        <ScrollView className="px-1 h-[300px]">
           <FlashList
             data={slots}
             renderItem={renderSlotItem}
@@ -206,7 +154,7 @@ const DoctorAvailability: React.FC<{
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 1 }}
           />
-        </View>
+        </ScrollView>
       )}
     </View>
   );

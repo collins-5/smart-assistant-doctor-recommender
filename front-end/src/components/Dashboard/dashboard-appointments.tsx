@@ -1,5 +1,3 @@
-// src/components/AppointmentsSection.tsx
-
 import React, { useState } from "react";
 import { View } from "react-native";
 import { Text } from "~/components/ui/text";

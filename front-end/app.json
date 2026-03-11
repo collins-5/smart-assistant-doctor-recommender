@@ -24,12 +24,13 @@
       },
       "package": "com.yourcompany.sdrhealth",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "GOOGLE_WEB_CLIENT_ID": "958773658005-4jmdm1fe76qdu4sil8qeddf3llabhh6k.apps.googleusercontent.com",
       "eas": {
         "projectId": "ad09125f-da89-4b0c-ae83-645e7f0c2609"
       }

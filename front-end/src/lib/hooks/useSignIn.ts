@@ -13,16 +13,12 @@ export const useSignIn = () => {
     const [signIn, { loading, error, data }] = useMutation(SignInDocument);
 
     const submit = async () => {
-        console.log('SIGN IN ATTEMPT STARTED');
-        console.log('Email/Phone:', emailOrPhone);
-        console.log('Password:', password ? '••••••••' : '');
-
+        
         if (!emailOrPhone || !password) {
             throw new Error("Please enter email/phone and password");
         }
 
         try {
-            console.log('CALLING GraphQL signIn mutation...');
             const result = await signIn({
                 variables: { emailOrPhoneNumber: emailOrPhone, password },
             });
@@ -33,11 +29,6 @@ export const useSignIn = () => {
             }
 
             const { jwtToken, user } = response;
-
-            console.log('LOGIN SUCCESS!');
-            console.log('JWT Token:', jwtToken.substring(0, 20) + '...');
-            console.log('User ID:', user.id);
-            console.log('Email:', user.email);
 
             // Save session
             setSession({
@@ -52,9 +43,6 @@ export const useSignIn = () => {
                 lastName: user.patient?.lastName || '',
             });
 
-            console.log('SESSION SAVED TO ZUSTAND STORE');
-
-            // THIS IS THE FINAL FIX — FORCE RE-VERIFICATION
             setLoadingSession?.(true);
 
             return { jwtToken, user };

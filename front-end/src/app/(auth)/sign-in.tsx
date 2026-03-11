@@ -1,6 +1,6 @@
 // src/app/(onboarding)/(auth)/sign-in.tsx
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link, useNavigation, useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import {
 } from "~/components/ui/card";
 import { SheetManager } from "react-native-actions-sheet";
 import { useSignIn } from "~/lib/hooks/useSignIn";
+import GoogleSignInButton from "~/components/core/google-sign-in";
 
 // Zod schema
 const signInSchema = z.object({
@@ -29,6 +30,12 @@ type SignInForm = z.infer<typeof signInSchema>;
 
 export default function SignInScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+
+  const handleSuccess = () => {
+    // Navigate to main app after successful login
+    navigation.navigate("Main" as never); // or 'Home', 'Dashboard', etc.
+  };
 
   const {
     emailOrPhone,
@@ -75,13 +82,19 @@ export default function SignInScreen() {
 
             <CardContent className="space-y-6">
               <View className="flex-row justify-center space-x-3">
-                <Button
+                {/* <Button
                   text="Google"
                   variant="outline"
                   size="default"
                   className="flex-1 text-center"
                   disabled
-                />
+                /> */}
+
+                {/* <GoogleSignInButton
+                  onSuccess={handleSuccess}
+                /> */}
+                
+
               </View>
               <Separator className="my-6 bg-foreground" text="OR" />
 
