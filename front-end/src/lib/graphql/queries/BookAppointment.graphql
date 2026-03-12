@@ -1,4 +1,3 @@
-# Add this to your .graphql files (e.g. mutations.graphql)
 mutation BookAppointment($bookingArgs: AppointmentInput!) {
   bookAppointment(bookingArgs: $bookingArgs) {
     appointment {

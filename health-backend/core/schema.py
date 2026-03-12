@@ -1,4 +1,3 @@
-# core/schema.py
 import graphene
 from graphene_django import DjangoObjectType
 import graphql_jwt
@@ -26,6 +25,7 @@ from .models import (
     PatientDoctorBookmark, Notification, Country, County,
     Insuarance, DoctorAvailability, AIChatMessage,
 )
+
 
 class CountryType(DjangoObjectType):
     class Meta:
@@ -477,29 +477,34 @@ class BookAppointment(graphene.Mutation):
         booking_args = AppointmentInput(required=True)
 
     appointment = graphene.Field(AppointmentType)
+    success = graphene.Boolean()
+    message = graphene.String()
 
     @staticmethod
     @login_required
     def mutate(root, info, booking_args):
         user = info.context.user
         if not hasattr(user, "patient"):
-            raise Exception("Patient profile required")
+            return BookAppointment(success=False, message="Patient profile required")
+
         patient = user.patient
+        
         try:
             doctor = Doctor.objects.get(pk=booking_args.doctor_id)
         except Doctor.DoesNotExist:
-            raise Exception("Doctor not found")
+            return BookAppointment(success=False, message="Doctor not found")
         
         proposed_end = booking_args.start_time + timedelta(minutes=30)
         now = timezone.now()
         
         if booking_args.start_time < now:
-            raise Exception("Cannot book appointments in the past")
+            return BookAppointment(success=False, message="Cannot book appointments in the past")
         
         requested_day = booking_args.start_time.weekday()
         requested_time = booking_args.start_time.time()
         requested_date = booking_args.start_time.date()
         
+        # Check availability
         has_availability = False
         
         recurring_rules = DoctorAvailability.objects.filter(
@@ -524,27 +529,48 @@ class BookAppointment(graphene.Mutation):
             ).exists()
         
         if not has_availability:
-            raise Exception("Doctor is not available at this time")
+            return BookAppointment(success=False, message="Doctor is not available at this time")
         
         if Appointment.objects.filter(
             doctor=doctor,
             start_time=booking_args.start_time,
             status__in=['UPCOMING', 'ONGOING']
         ).exists():
-            raise Exception("This time slot is already booked")
+            return BookAppointment(success=False, message="This time slot is already booked")
         
-        appointment_cost = Decimal('2500.00')
-        appt = Appointment.objects.create(
+        # ── Use real doctor price based on encounter mode ───────────────────
+        mode = booking_args.encounter_mode.upper()
+        
+        if mode == 'TELE':
+            cost = doctor.teleconsult_price
+        elif mode == 'CLINIC':
+            cost = doctor.clinic_visit_price
+        elif mode == 'HOME':
+            cost = doctor.homecare_price
+        else:
+            return BookAppointment(success=False, message=f"Invalid encounter mode: {mode}")
+        
+        if cost <= 0:
+            return BookAppointment(
+                success=False,
+                message=f"Doctor has not set a valid price for {mode} consultations"
+            )
+        
+        # Optional: add platform fee here if you want
+        # cost += Decimal('200.00')
+        
+        appointment = Appointment.objects.create(
             patient=patient,
             doctor=doctor,
             start_time=booking_args.start_time,
             end_time=proposed_end,
-            encounter_mode=booking_args.encounter_mode,
-            cost=appointment_cost,
+            encounter_mode=mode,
+            cost=cost,
             payment_completed=False,
             rastuc_id=str(uuid.uuid4())
         )
         
+        # Optional notification
         if CHANNELS_AVAILABLE:
             try:
                 async_to_sync(get_channel_layer().group_send)(
@@ -552,10 +578,10 @@ class BookAppointment(graphene.Mutation):
                     {
                         "type": "send_notification",
                         "notification": {
-                            "id": appt.id,
+                            "id": appointment.id,
                             "title": "Appointment Confirmed!",
-                            "description": f"With Dr. {appt.doctor.full_name}",
-                            "createdAt": appt.start_time.isoformat(),
+                            "description": f"With Dr. {appointment.doctor.full_name} – {appointment.get_encounter_mode_display()} @ KES {cost}",
+                            "createdAt": appointment.start_time.isoformat(),
                             "isRead": False,
                         }
                     }
@@ -563,7 +589,11 @@ class BookAppointment(graphene.Mutation):
             except Exception:
                 pass
         
-        return BookAppointment(appointment=appt)
+        return BookAppointment(
+            appointment=appointment,
+            success=True,
+            message="Appointment booked successfully"
+        )
 
 
 class BookmarkDoctor(graphene.Mutation):
@@ -1005,14 +1035,12 @@ class Query(graphene.ObjectType):
         for appt in queryset:
             original_status = appt.status
 
-            # Automatically transition UPCOMING/ONGOING based on current time
-            if original_status in ["UPCOMING", "ONGOING"]:
+            if appt.status in ["UPCOMING", "ONGOING"]:
                 if appt.start_time <= now <= appt.end_time:
                     appt.status = "ONGOING"
                 elif now > appt.end_time:
                     appt.status = "COMPLETED"
 
-                # Persist status change so future queries are correct
                 if appt.status != original_status:
                     appt.save(update_fields=["status"])
 
