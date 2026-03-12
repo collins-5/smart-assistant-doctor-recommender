@@ -73,17 +73,6 @@ const DoctorAvailability: React.FC<{
     );
   }
 
-  // No available slots at all
-  if (slots.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center py-12">
-        <Ionicons name="calendar-outline" size={48} color="#9CA3AF" />
-        <Text className="mt-4 text-muted-foreground text-center">
-          No available slots at the moment
-        </Text>
-      </View>
-    );
-  }
 
   const renderSlotItem = ({ item }: { item: any }) => {
     const isSelected = selectedSlot?.id === item.id;
