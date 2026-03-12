@@ -1,5 +1,5 @@
 overwrite: true
-schema: http://127.0.0.1:8000/graphql/  # Your backend URL
+schema: http://127.0.0.1:8080/graphql/ 
 documents: 'src/**/*.graphql'
 generates:
   src/lib/graphql/generated/graphql.tsx:
