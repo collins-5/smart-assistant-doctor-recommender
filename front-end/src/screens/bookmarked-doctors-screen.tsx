@@ -1,4 +1,3 @@
-// app/(protected)/bookmarks.tsx
 import React from "react";
 import {
   View,
@@ -13,6 +12,8 @@ import { useBookmarkedDoctors } from "~/lib/hooks/useBookmarkedDoctors";
 import { DoctorCard } from "~/components/doctors/doctor-card";
 import SkeletonList from "~/components/core/SkeletonList";
 import { DoctorCardSkeleton } from "~/components/skeletons/doctor-card-skeleton";
+import { Button } from "~/components/ui/button";
+import Icon from "~/components/ui/icon";
 
 export default function BookmarksScreen() {
   const { doctors, error, loading, refetch } = useBookmarkedDoctors();
@@ -51,10 +52,20 @@ export default function BookmarksScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-primary py-6">
-        <Text className="text-3xl font-bold text-center text-primary-foreground">
-          Bookmarks
-        </Text>
+      <View className="bg-primary py-3">
+        <View className="flex-row justify-between">
+          <Button
+            onPress={() => router.back()}
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            leftIcon={<Icon name="arrow-left" size={28} color="white" />}
+          />
+          <Text className="text-3xl font-bold text-center text-primary-foreground">
+            Bookmarks
+          </Text>
+          <View />
+        </View>
       </View>
       {error ? (
         <View className="flex-1 justify-center items-center mt-20 px-10">

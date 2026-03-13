@@ -70,6 +70,8 @@ export type AvailableSlotType = {
 export type BookAppointment = {
   __typename?: 'BookAppointment';
   appointment?: Maybe<AppointmentType>;
+  message?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type BookmarkDoctor = {
@@ -631,7 +633,7 @@ export type BookAppointmentMutationVariables = Exact<{
 }>;
 
 
-export type BookAppointmentMutation = { __typename?: 'Mutation', bookAppointment?: { __typename?: 'BookAppointment', appointment?: { __typename?: 'AppointmentType', id: string, rastucId: string, startTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null } | null } | null };
+export type BookAppointmentMutation = { __typename?: 'Mutation', bookAppointment?: { __typename?: 'BookAppointment', success?: boolean | null, message?: string | null, appointment?: { __typename?: 'AppointmentType', id: string, rastucId: string, startTime: any, endTime: any, encounterMode: CoreAppointmentEncounterModeChoices, cost: any, status: CoreAppointmentStatusChoices, doctor?: { __typename?: 'BookmarkedDoctorType', id: string, fullName: string, title: string, primarySpecialty?: { __typename?: 'SpecialtyType', name: string } | null } | null, patient: { __typename?: 'PatientType', id: string, firstName: string, lastName: string } } | null } | null };
 
 export type GetAiChatMessagesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1108,12 +1110,16 @@ export type VerifyTokenMutationOptions = Apollo.BaseMutationOptions<VerifyTokenM
 export const BookAppointmentDocument = gql`
     mutation BookAppointment($bookingArgs: AppointmentInput!) {
   bookAppointment(bookingArgs: $bookingArgs) {
+    success
+    message
     appointment {
       id
       rastucId
       startTime
+      endTime
       encounterMode
       cost
+      status
       doctor {
         id
         fullName
@@ -1121,6 +1127,11 @@ export const BookAppointmentDocument = gql`
         primarySpecialty {
           name
         }
+      }
+      patient {
+        id
+        firstName
+        lastName
       }
     }
   }

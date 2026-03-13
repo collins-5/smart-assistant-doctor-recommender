@@ -1,12 +1,15 @@
-# Add this to your .graphql files (e.g. mutations.graphql)
 mutation BookAppointment($bookingArgs: AppointmentInput!) {
   bookAppointment(bookingArgs: $bookingArgs) {
+    success           
+    message           
     appointment {
       id
       rastucId
       startTime
+      endTime         
       encounterMode
-      cost
+      cost            
+      status
       doctor {
         id
         fullName
@@ -14,6 +17,11 @@ mutation BookAppointment($bookingArgs: AppointmentInput!) {
         primarySpecialty {
           name
         }
+      }
+      patient {       
+        id
+        firstName
+        lastName
       }
     }
   }

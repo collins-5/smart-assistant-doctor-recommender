@@ -1,4 +1,3 @@
-// src/components/appointment/AppointmentCard.tsx
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
@@ -22,7 +21,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment }) => {
 
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Live countdown with seconds for ONGOING appointments
   useEffect(() => {
     if (status !== "ONGOING") {
       setTimeLeft("");
@@ -142,7 +140,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment }) => {
         {paymentCompleted ? "✓ Paid" : "⚠ Pending Payment"}
       </Text>
 
-      {/* Cancel Button - Only for UPCOMING */}
       {status === "UPCOMING" && (
         <TouchableOpacity
           onPress={handleCancelPress}
@@ -154,7 +151,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment }) => {
         </TouchableOpacity>
       )}
 
-      {/* Clean countdown box with minutes & seconds */}
       {status === "ONGOING" && timeLeft && timeLeft !== "Ended" && (
         <View className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-200">
           <Text className="text-center text-orange-800 font-bold text-lg">
